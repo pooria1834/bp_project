@@ -7,15 +7,17 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 struct stat b;
- char t[ 100 ] = "";
+char t[ 100 ] = "";
+char branch_name[50]="master";
+char final_output[2000];
+int new_addings=0;
+char store_numbers[20][1024];
 char*  last_modified_check(char address[])
 {
      stat(address, &b);
      strftime(t, 100, "%d/%m/%Y %H:%M:%S", localtime(&b.st_mtime));
      return t;
 }
-char branch_name[50]="master";
-char final_output[2000];
 
 char* existance(char dirname[])
 {
@@ -134,9 +136,9 @@ void branch_folder_maker(char branch_name[])
     fclose(stat);
     FILE* l_stage=fopen("last_stages.txt","w");
     fclose(l_stage);
-    FILE* sf=fopen("staged_folders","w");
-    fclose(sf);
-    chdir(where);
+    //FILE* sf=fopen("staged_folders","w");
+    //fclose(sf);
+    //chdir(where);
 }
 
 int run_init(int argc,char* argv[])
@@ -232,7 +234,9 @@ int run_add(char address[])
                 fseek(addd,a,SEEK_SET);
                 fprintf(addd,"%s\n",time);
                 fprintf(addd,"s\n");
-                fclose(addd);   
+                fclose(addd);
+                new_addings++;
+                strcpy(store_numbers[new_addings],address);  
             }
         }
     }
@@ -244,6 +248,8 @@ int run_add(char address[])
         fprintf(new_add,"%s\n",time);
         fprintf(new_add,"s\n");
         fclose(new_add);
+        new_addings++;
+        strcpy(store_numbers[new_addings],address);
     }
     chdir(cwd); 
 }
@@ -279,19 +285,18 @@ int  general_add(char address[])
     chdir(cwd);
 }
 
-int is_staged(char address[])
+int is_staged(char address[],short int m)
 {
     int flag=0;
     char cwd[1024];
     char time[200];
     strcpy(time,last_modified_check(address));
     getcwd(cwd,sizeof(cwd));
-    if(fopen(address,"r")==NULL) return -2;
     chdir(existance(".nimkat"));
     chdir(branch_name);
     char address_checker[1024];
-    FILE* status=fopen("status.txt","r");
-    if(status==NULL) {printf("faild to open status.txt");return -3;}
+    FILE* status=fopen("status.txt","r+");
+    if(status==NULL) {printf("faild to open status.txt,please contact us!");return -3;}
         while(1)
         {
             fgets(address_checker,1024,status);
@@ -304,17 +309,40 @@ int is_staged(char address[])
                 char written_time[200];
                 fgets(written_time,200,status);
                 written_time[strlen(written_time)-1]='\0';
-                fgets(mode,3,status);
-                if((strcmp(time,written_time)==0)&&(strcmp(mode,"s\n"))==0) return 1;
-                return 0;
+                int c=ftell(status);
+                if(m==1)
+                {
+                    if(fopen(address,"r")==NULL) return -1;
+                    fclose(fopen(address,"r"));
+                    fgets(mode,3,status);
+                    if((strcmp(time,written_time)==0)&&(strcmp(mode,"s\n"))==0) return 1;
+                    return 0;
+                }
+                if(m==0)
+                {
+                    fopen("status.txt","r+");
+                    fseek(status,c,SEEK_SET);
+                    fprintf(status,"u\n");
+                    fclose(status);
+                    return 2;
+                }
             }
         }
     fclose(status);
-    if(flag=0) return -1;
+    if(flag==0) 
+    {
+        if(m==1)
+        {
+            if(fopen(address,"r")==NULL) return -2;
+            return -3;
+        } 
+
+        else if(m==0){printf("the file was not staged before!\n");return -4;}
+     }
     chdir(cwd);
 }
 
-int staged_folder(char address[])
+int staged_folder(char address[],short int m)
 {
     struct dirent* entry;
     DIR* dir=opendir(address);
@@ -327,17 +355,34 @@ int staged_folder(char address[])
             strcpy(final_address,address);
             strcat(final_address,"\\");
             strcat(final_address,entry->d_name);
-            int a =is_staged(final_address);
-            if(a!=1) return 0; 
+            int a =is_staged(final_address,m);
+            if((a!=1)&&(m==1)) return 0; 
         }
     }
     closedir(dir);
-    return 1;
+   if(m==1) return 1;
 }
 
-int run_reset()
+int run_status(char address[])
 {
-    
+    char cwd[1024];
+    getcwd(cwd,sizeof(cwd));
+    struct dirent* entry;
+    DIR* dir=opendir(".");
+    while((entry=readdir(dir))!=NULL)
+    {
+        if(entry->d_type!=DT_DIR)
+        {
+            char final_address[1024];
+            strcpy(final_address,cwd);
+            strcat(final_address,"\\");
+            strcat(final_address,entry->d_name);
+            int a=is_staged(final_address,1);
+            if(a==-1) {printf("%s -D\n",final_address);return 0;}
+            else if(a==0){printf("%s -M",address);}
+        }
+    }
+    closedir(dir);
 }
 
 int main(int argc,char* argv[])
@@ -379,7 +424,7 @@ else if((strcmp(argv[1],"config")==0))
 else if(strcmp(argv[1],"add")==0)
 {
    if(argc<3) {printf("not a valid command(if you use wild_cards there is not any such file or directory!)");return 1;}
-   else if((argc==3)&&(strstr(argv[2],"*")==NULL)&&(strcmp(argv[2],"-n"))) {return general_add(argv[2]);}
+   else if((argc==3)&&(strcmp(argv[2],"-n"))) {general_add(argv[2]);}
    else
    {
         if(strcmp(argv[2],"-f")==0)
@@ -405,13 +450,13 @@ else if(strcmp(argv[1],"add")==0)
                 strcat(final_address,entry->d_name);
                 if((strcmp(entry->d_name,".."))&&(strcmp(entry->d_name,"."))&&(entry->d_type==DT_DIR))
                 {
-                    int a=staged_folder(final_address);
+                    int a=staged_folder(final_address,1);
                     if(a==1) printf("%s :is sataged\n",final_address);
                     else printf("%s :is not staged\n",final_address);
                 }
                 else if(strcmp(entry->d_name,".")&&(strcmp(entry->d_name,"..")))
                 {
-                    int a=is_staged(final_address);
+                    int a=is_staged(final_address,1);
                     if(a==1) printf("%s :is sataged\n",final_address);
                     else printf("%s :is not staged\n",final_address);
                 }
@@ -419,25 +464,75 @@ else if(strcmp(argv[1],"add")==0)
         }
         else
         {
-            /*char cwd[1024];
+            char cwd[1024];
             getcwd(cwd,sizeof(cwd));
             int i=2;
             while(argv[i]!=NULL)
             {
-                char final_address[1024];
-                strcpy(cwd,final_address);
+                char final_address[1024]="";
+                strcpy(final_address,cwd);
                 strcat(final_address,"\\");
                 strcat(final_address,argv[i]);
                 general_add(final_address);
-            }*/
+                i++;
+            }
         }
    }
-   return 0;
+   if(new_addings>0)
+   {
+    char cwd[1024];
+    getcwd(cwd,sizeof(cwd));
+    chdir(existance(".nimkat"));
+    chdir(branch_name);
+    FILE* file=fopen("last_stages.txt","w");
+        for(int i=1;i<=new_addings;i++)
+        fprintf(file,"%s\n",store_numbers[i]);
+    fclose(file);
+   }
 }
 else if(strcmp(argv[1],"reset")==0)
 {
+if(existance(".nimkat")==NULL) {printf("you have not initialized yet!"); return 0;}
+if(strcmp(argv[2],"-undo")==0)
+{
+    char cwd[1024];
+    getcwd(cwd,sizeof(cwd));
+    chdir(existance(".nimkat"));
+    chdir(branch_name);
+    FILE* file1=fopen("last_stages.txt","r");
+    char reset_address[1024];
+    while(1)
+    {
+        fgets(reset_address,1024,file1);
+        reset_address[strlen(reset_address)-1]='\0';
+        if(feof(file1)) break;
+        is_staged(reset_address,0);
+    }
+    fclose(file1);   
+}
+else
+{
+    FILE* file=fopen(argv[2],"r");
+    DIR* dir=opendir(argv[2]);
+    if((file==NULL)&&(dir==NULL)) {printf("insert a valid address!");return 0;}
+    if(file!=NULL)
+    {
+        is_staged(argv[2],0);
+    }
+    else if(dir!=NULL)
+    {
+        staged_folder(argv[2],0);
+    }
+    fclose(file);
+    closedir(dir);
+}
+}
+
+else if(strcmp(argv[1],"status")==0)
+{
 
 }
+
 else
 {
     if(existance(".nimkat")==NULL) printf("you have not already initialized!");
@@ -478,5 +573,4 @@ else
         return main(i,word);
     }
 }
-
 }
