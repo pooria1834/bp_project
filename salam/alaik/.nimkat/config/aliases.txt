@@ -1,0 +1,12 @@
+alias.dadash
+nimkat config user.name salam@gmail.com
+------------
+eival
+nimkat config user.name salam@gmail.com
+------------
+barikalla
+nimkat config user.email salam@gmail.com
+------------
+boomaom
+nimkat init
+------------
