@@ -12,6 +12,22 @@ char branch_name[50]="master";
 char final_output[2000];
 int new_addings=0;
 char store_numbers[20][1024];
+char output[1024];
+char* rel_to_abs(char address[])
+{
+   if(strstr(address,"\\")!=NULL)  return address ;
+    char* token;
+    getcwd(output,sizeof(output));
+    token=strtok(address,"/");
+    while(token!=NULL)
+    {
+       strcat(output,"\\");
+        strcat(output,token);
+        token=strtok(NULL,"/");
+    }
+    return output;
+}
+
 char*  last_modified_check(char address[])
 {
      stat(address, &b);
@@ -424,7 +440,7 @@ else if((strcmp(argv[1],"config")==0))
 else if(strcmp(argv[1],"add")==0)
 {
    if(argc<3) {printf("not a valid command(if you use wild_cards there is not any such file or directory!)");return 1;}
-   else if((argc==3)&&(strcmp(argv[2],"-n"))) {general_add(argv[2]);}
+   else if((argc==3)&&(strcmp(argv[2],"-n"))) {general_add(rel_to_abs(argv[2]));}
    else
    {
         if(strcmp(argv[2],"-f")==0)
@@ -432,7 +448,7 @@ else if(strcmp(argv[1],"add")==0)
             int i=3;
             while(argv[i]!=NULL)
             {
-                general_add(argv[i]);
+                general_add(rel_to_abs(argv[i]));
                 i++;
             }
         }
@@ -512,16 +528,18 @@ if(strcmp(argv[2],"-undo")==0)
 }
 else
 {
-    FILE* file=fopen(argv[2],"r");
-    DIR* dir=opendir(argv[2]);
+    char to_reset[1024];
+    strcpy(to_reset,rel_to_abs(argv[2]));
+    FILE* file=fopen(to_reset,"r");
+    DIR* dir=opendir(to_reset);
     if((file==NULL)&&(dir==NULL)) {printf("insert a valid address!");return 0;}
     if(file!=NULL)
     {
-        is_staged(argv[2],0);
+        is_staged(to_reset,0);
     }
     else if(dir!=NULL)
     {
-        staged_folder(argv[2],0);
+        staged_folder(to_reset,0);
     }
     fclose(file);
     closedir(dir);
