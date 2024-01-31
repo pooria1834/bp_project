@@ -67,6 +67,66 @@ char* existance(char dirname[])
     return NULL;
 }
 
+void commit_folder_maker(char commit_message[])
+{
+    char cwd[1024];
+    getcwd(cwd,sizeof(cwd));
+    chdir(existance(".nimkat"));
+    FILE* file=fopen("last_com.txt","r");
+    if(file==NULL) printf("unable to find the current commit number!");
+    else
+    {
+        chdir("config");
+        int a;
+        fscanf(file,"%d",&a);
+        fclose(file);
+        a+=1;
+        FILE* f=fopen("..\\last_com.txt","w");
+        fprintf(f,"%d",a);
+        fclose(f);
+        FILE* r=fopen("..\\cur_com.txt","w");
+        fprintf(r,"%d",a);
+        fclose(r);
+        char k[10];
+        sprintf(k,"%d",a);
+        mkdir(k);
+        chdir(k);
+        FILE* info=fopen("info.txt","w");
+            fprintf(info,"id: %d\n",a);
+            FILE* user=fopen("..\\name.txt","r");
+            char name[51];
+            fgets(name,sizeof(name),user);
+            fclose(user);
+            fprintf(info,"author: %s\n",name);
+            fprintf(info,"message: %s\n",commit_message);
+            time_t t = time(NULL);
+            fprintf(info,"time: %s",ctime(&t));
+            char source[1024];
+            sprintf(source,"%s\\%s\\status.txt",existance(".nimkat"),branch_name);
+            char dest[1024];
+            sprintf(dest,"%s\\config\\%s\\status.txt",existance(".nimkat"),k);
+            char command[2048];
+            sprintf(command,"copy %s %s",source,dest);
+            system(command);
+            int count=0;
+            int line=0;
+            char mode_checker[3];
+            FILE* stat=fopen("status.txt","r");
+            while(1)
+            {
+                fgets(mode_checker,3,stat);
+                line++;
+                if((mode_checker[0]=='s')&&(line%3==0)) count++;
+                if(feof(stat)) break;
+            }
+            fclose(stat);
+            fprintf(info,"number of commited files: %d\n",count);
+        fclose(info);
+        
+    }
+    chdir(cwd);
+}
+
 int run_config(int argc,char* argv[])
 {
      if(strcmp(argv[2],"-global")==0)
@@ -141,20 +201,20 @@ int run_config(int argc,char* argv[])
     }
 }
 
-void branch_folder_maker(char branch_name[])
+void branch_folder_maker(char br_name[])
 {
     char where[1024];
     getcwd(where,sizeof(where));
     chdir(existance(".nimkat"));
-    mkdir(branch_name);
-    chdir(branch_name);
+    mkdir(br_name);
+    chdir(br_name);
     FILE* stat=fopen("status.txt","w");
     fclose(stat);
     FILE* l_stage=fopen("last_stages.txt","w");
     fclose(l_stage);
-    //FILE* sf=fopen("staged_folders","w");
-    //fclose(sf);
-    //chdir(where);
+    FILE* sf=fopen("head_id.txt","w");
+    fclose(sf);
+    chdir(where);
 }
 
 int run_init(int argc,char* argv[])
@@ -164,10 +224,21 @@ int run_init(int argc,char* argv[])
     {
      mkdir(".nimkat");
      mkdir(".nimkat\\config");
+     FILE* f=fopen(".nimkat\\cur_branch.txt","w");
+     fprintf(f,"%s","master");
+     fclose(f);
      branch_folder_maker("master");
-   FILE* file=fopen("G:\\bp_project\\globals\\projects.txt","a");
-   fprintf(file,"%s\n",existance(".nimkat"));
-   fclose(file);
+     FILE* file=fopen("G:\\bp_project\\globals\\projects.txt","a");
+     fprintf(file,"%s\n",existance(".nimkat"));
+     fclose(file);
+     FILE* t=fopen(".nimkat\\config\\com_shortcs.txt","w");
+     fclose(t);
+     FILE* c=fopen(".nimkat\\last_com.txt","w");
+     fprintf(c,"%d",0);
+     fclose(c);
+     FILE* d=fopen(".nimkat\\cur_com.txt","w");
+     fprintf(d,"%d",0);
+     fclose(d);
     }
 }
 
@@ -216,7 +287,6 @@ int run_add(char address[])
 {
    int flag=0;
     if(existance(".nimkat")==NULL) {printf("you have not initialized yet!");return 1;}
-    if(fopen(address,"r")==NULL) {printf("the file failed to find!\n");return 1;}
     char time[100];
     char cwd[1024];
     char address_checker[1024];
@@ -225,6 +295,7 @@ int run_add(char address[])
     chdir(existance(".nimkat"));
     chdir(branch_name);
     FILE* add=fopen("status.txt","r+");
+    FILE* exist=fopen(address,"r");
     while(1)
     {
         fgets(address_checker,1024,add);
@@ -239,8 +310,7 @@ int run_add(char address[])
             fgets(written_time,1024,add);
             written_time[strlen(written_time)-1]='\0';
             fgets(mode,3,add);
-
-            if((strcmp(written_time,time)==0)&&(strcmp(mode,"s\n")==0))
+            if((strcmp(written_time,time)==0)&&(((exist==NULL)&&(strcmp(mode,"sd\n")==0))||((exist!=NULL)&&(strcmp(mode,"ss\n")==0))))
             {
             printf("the file is already added!");chdir(cwd);return 1;
             }
@@ -249,7 +319,8 @@ int run_add(char address[])
                 FILE* addd=fopen("status.txt","r+");
                 fseek(addd,a,SEEK_SET);
                 fprintf(addd,"%s\n",time);
-                fprintf(addd,"s\n");
+                if(exist==NULL) fprintf(addd,"sd\n");
+                else fprintf(addd,"ss\n");
                 fclose(addd);
                 new_addings++;
                 strcpy(store_numbers[new_addings],address);  
@@ -259,14 +330,19 @@ int run_add(char address[])
     fclose(add);
     if(flag==0)
     {
-        FILE* new_add=fopen("status.txt","a");
-        fprintf(new_add,"%s\n",address);
-        fprintf(new_add,"%s\n",time);
-        fprintf(new_add,"s\n");
-        fclose(new_add);
-        new_addings++;
-        strcpy(store_numbers[new_addings],address);
+        if(exist==NULL) printf("The file faild to find.\n");
+        else
+        {
+            FILE* new_add=fopen("status.txt","a");
+            fprintf(new_add,"%s\n",address);
+            fprintf(new_add,"%s\n",time);
+            fprintf(new_add,"ss\n");
+            fclose(new_add);
+            new_addings++;
+            strcpy(store_numbers[new_addings],address);
+        }
     }
+    fclose(exist);
     chdir(cwd); 
 }
 
@@ -312,6 +388,7 @@ int is_staged(char address[],short int m)
     chdir(branch_name);
     char address_checker[1024];
     FILE* status=fopen("status.txt","r+");
+    FILE* exist=fopen(address,"r");
     if(status==NULL) {printf("faild to open status.txt,please contact us!");return -3;}
         while(1)
         {
@@ -328,17 +405,18 @@ int is_staged(char address[],short int m)
                 int c=ftell(status);
                 if(m==1)
                 {
-                    if(fopen(address,"r")==NULL) return -1;
-                    fclose(fopen(address,"r"));
                     fgets(mode,3,status);
-                    if((strcmp(time,written_time)==0)&&(strcmp(mode,"s\n"))==0) return 1;
-                    return 0;
+                    if((strcmp(time,written_time)==0)&&(exist!=NULL)&&(strcmp(mode,"ss\n")==0)) return 1;
+                    else if((strcmp(time,written_time)==0)&&(exist==NULL)&&(strcmp(mode,"sd\n")==0)) return 2;
+                    else if(exist!=NULL) return 0;
+                    else if(exist==NULL) return -1;
                 }
                 if(m==0)
                 {
                     fopen("status.txt","r+");
                     fseek(status,c,SEEK_SET);
-                    fprintf(status,"u\n");
+                    if(exist==NULL) fprintf(status,"ud\n");
+                    else fprintf(status,"uu\n");
                     fclose(status);
                     return 2;
                 }
@@ -403,6 +481,7 @@ int run_status(char address[])
 
 int main(int argc,char* argv[])
 {
+if(existance(".nimkat")!=NULL) {char w_dir[1024];getcwd(w_dir,sizeof(w_dir));chdir(existance(".nimkat"));FILE* file=fopen("cur_branch.txt","r");fgets(branch_name,sizeof(branch_name),file);fclose(file);chdir(w_dir);}
 if(argc<=1) {printf("just my name is not enough!");return 1;}
 
 else if(strcmp(argv[1],"init")==0)
@@ -546,10 +625,7 @@ else
 }
 }
 
-else if(strcmp(argv[1],"status")==0)
-{
-
-}
+else if(1) {printf("hello");commit_folder_maker(argv[2]);}
 
 else
 {
