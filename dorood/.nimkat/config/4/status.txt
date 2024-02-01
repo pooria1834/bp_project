@@ -1,6 +1,6 @@
 G:\bp_project\dorood\salam.txt
 01/01/1970 03:30:00
-dd
+sd
 G:\bp_project\dorood\kmp.txt
 31/01/2024 00:00:02
-uu
+ss
