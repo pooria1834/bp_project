@@ -6,6 +6,7 @@
 #include <conio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include<locale.h>
 struct stat b;
 char t[ 100 ] = "";
 char branch_name[50]="master";
@@ -14,6 +15,30 @@ int new_addings=0;
 char store_numbers[20][1024];
 char output[1024];
 char tokenized[20][1024];
+char commited[20][1024];
+int sequence[50];
+int month_finder(char month[])
+{
+    if(strcmp(month,"Jan")==0) return 0; else if(strcmp(month,"Feb")==0) return 1; else if(strcmp(month,"Mar")==0) return 2; else if(strcmp(month,"Apr")==0) return 3;
+    else if(strcmp(month,"May")==0) return 4;else if(strcmp(month,"Jun")==0) return 5;else if(strcmp(month,"Jul")==0) return 6;else if(strcmp(month,"Aug")==0) return 7;
+    else if(strcmp(month,"Sep")==0) return 8;else if(strcmp(month,"Oct")==0) return 9;else if(strcmp(month,"Nov")==0) return 10;else if(strcmp(month,"Dec")==0) return 11;
+}
+
+int time_compare(char date1[],char date2[])
+{
+    char month1[4],month2[4];
+    int year1,year2,day1,day2,hour1,hour2,min1,min2,sec1,sec2;
+    sscanf(date1,"%*s %s %d %d:%d:%d %d",&month1,&day1,&hour1,&min1,&sec1,&year1);
+    sscanf(date2,"%*s %s %d %d:%d:%d %d",&month2,&day2,&hour2,&min2,&sec2,&year2);
+    if(year1!=year2) return year1-year2;
+    else if(strcmp(month1,month2)) return month_finder(month1)-month_finder(month2);
+    else if (day1!=day2) return day1-day2;
+    else if(hour1!=hour2) return hour1-hour2;
+    else if(min1!=min2) return min1-min2;
+    else if(sec1!=sec2) return sec1-sec2;
+    else return 0;
+}
+
 char* rel_to_abs(char address[])
 {
    if(strstr(address,"\\")!=NULL)  return address ;
@@ -70,8 +95,10 @@ char* existance(char dirname[])
 
 char* folfile_name(char address[],short int m)
 {
+    char add2[1024];
+    strcpy(add2,address);
     char* token;
-    token=strtok(address,"\\");
+    token=strtok(add2,"\\");
     int i=0;
     while(token!=NULL)
     {
@@ -104,7 +131,7 @@ int  commit_folder_maker(char commit_message[])
         fgets(mode_checker,4,stat);
         if((strcmp(mode_checker,"sd\n")==0)||((mode_checker[0]=='s')&&(strcmp(written_time,last_modified_check(address))==0)))
         {
-            count++;
+            count++;strcpy(commited[count],address);
         }
     }
     fclose(stat);
@@ -121,6 +148,13 @@ int  commit_folder_maker(char commit_message[])
         fscanf(file,"%d",&a);
         fclose(file);
         a+=1;
+        FILE* comm=fopen("..\\commit_sequance.txt","a");
+        fprintf(comm,"*****commit number: %d\n",a);
+        for(int i=1;i<=count;i++)
+        {
+            fprintf(comm,"%s\n",commited[i]);
+        }
+        fclose(comm);
         FILE* f=fopen("..\\last_com.txt","w");
         fprintf(f,"%d",a);
         fclose(f);
@@ -221,7 +255,11 @@ int  commit_folder_maker(char commit_message[])
             FILE* c_num=fopen("commited_num.txt","w");
             fprintf(c_num,"%d",count);
             fclose(c_num);
-        
+        chdir(existance(".nimkat"));
+        chdir(br_name);
+        FILE* head=fopen("head_id.txt","w");
+        fprintf(head,"%d",a);
+        fclose(head);
     }
     }
     chdir(cwd);
@@ -332,14 +370,19 @@ int run_init(int argc,char* argv[])
      FILE* file=fopen("G:\\bp_project\\globals\\projects.txt","a");
      fprintf(file,"%s\n",existance(".nimkat"));
      fclose(file);
-     FILE* t=fopen(".nimkat\\config\\com_shortcs.txt","w");
-     fclose(t);
+     FILE* ti=fopen(".nimkat\\config\\com_shortcs.txt","w");
+     fclose(ti);
      FILE* c=fopen(".nimkat\\last_com.txt","w");
      fprintf(c,"%d",0);
      fclose(c);
      FILE* d=fopen(".nimkat\\cur_com.txt","w");
      fprintf(d,"%d",0);
      fclose(d);
+     FILE* com_seq=fopen(".nimkat\\commit_sequance.txt","w");
+     fclose(com_seq); 
+     FILE* branch=fopen(".nimkat\\branches.txt","w");
+     fprintf(branch,"master\n");
+     fclose(branch);
     }
 }
 
@@ -472,6 +515,7 @@ int  general_add(char address[])
     if((fopen(address,"r")==NULL)&&(chdir(address)!=0)&&(flag==0)) {printf("the address faild to find\n");return 1;}
     if(chdir(address)!=0)
     {
+        chdir(cwd);
         return run_add(address);
     }
     else
@@ -521,9 +565,9 @@ int is_staged(char address[],short int m)
                 fgets(written_time,200,status);
                 written_time[strlen(written_time)-1]='\0';
                 int c=ftell(status);
+                fgets(mode,4,status);
                 if(m==1)
                 {
-                    fgets(mode,4,status);
                     if(strcmp(mode,"dd\n")==0) return -2;
                     if((strcmp(time,written_time)==0)&&(exist!=NULL)&&(strcmp(mode,"ss\n")==0)) return 1;
                     else if((strcmp(time,written_time)==0)&&(exist==NULL)&&(strcmp(mode,"sd\n")==0)) return 2;
@@ -537,6 +581,7 @@ int is_staged(char address[],short int m)
                         fopen("status.txt","r+");
                         fseek(status,c,SEEK_SET);
                         fprintf(status,"u");
+                        if(strcmp(mode,"ss\n")==0) fprintf(status,"u");
                         fclose(status);
                     return 2;
                     }
@@ -579,26 +624,118 @@ int staged_folder(char address[],short int m)
    if(m==1) return 1;
 }
 
+int commit_info(int id)
+{
+    char cwd[1024];
+    getcwd(cwd,sizeof(cwd));
+    chdir(existance(".nimkat"));
+    char file_name[4];
+    sprintf(file_name,"%d",id);
+    chdir("config");
+    if(chdir(file_name)!=0){printf("the commit id does not exist!");return 0;}
+    char time[100];
+    char message[100];
+    char author[50];
+    char branch_name[50];
+    char commited_num[4];
+    FILE* com_time=fopen("time.txt","r");
+    fgets(time,sizeof(time),com_time);
+    fclose(com_time);
+    FILE* com_author=fopen("author.txt","r");
+    fgets(author,sizeof(author),com_author);
+    fclose(com_author);
+    FILE* com_branch=fopen("branch.txt","r");
+    fgets(branch_name,sizeof(branch_name),com_author);
+    fclose(com_branch);
+    FILE* com_message=fopen("message.txt","r");
+    fgets(message,sizeof(message),com_message);
+    fclose(com_message);
+    FILE* com_commited=fopen("commited_num.txt","r");
+    fgets(commited_num,sizeof(commited_num),com_commited);
+    fclose(com_commited);
+    printf("commit time: %scommit message: %s\ncommit author: %s\ncommit id: %d\nin branch: %s\ncommited %s files.\n------------\n",time,message,author,id,branch_name,commited_num);
+    chdir(cwd);
+}
+
+int* sequence_finder(char address[])
+{
+    char cwd[1024];
+    getcwd(cwd,sizeof(cwd));
+    chdir(existance(".nimkat"));
+    for(int k=0;k<50;k++) sequence[k]=-1;
+    int i=0;
+    char add_checker[1024];
+    int number=0;
+    FILE* file=fopen("commit_sequance.txt","r");
+    while(1)
+    {
+        fgets(add_checker,sizeof(add_checker),file);
+        add_checker[strlen(add_checker)-1]='\0';
+        if(feof(file)) break;
+        if(strstr(add_checker,"*")!=NULL) sscanf(add_checker,"*****commit number: %d",&number);
+        if(strcmp(add_checker,address)==0) {sequence[i]=number;i++;}
+    }
+    fclose(file);
+    chdir(cwd);
+    return sequence;
+}
+
 int run_status(char address[])
 {
     char cwd[1024];
     getcwd(cwd,sizeof(cwd));
-    struct dirent* entry;
-    DIR* dir=opendir(".");
-    while((entry=readdir(dir))!=NULL)
+    char stage;
+    chdir(existance(".nimkat"));
+    chdir(branch_name);
+    FILE* stat=fopen("status.txt","r");
+    char address_checker[1024];
+    char mod_time[100];
+    char mode[4];
+    int flag=0;
+    while(1)
     {
-        if(entry->d_type!=DT_DIR)
+        fgets(address_checker,sizeof(address_checker),stat);
+        address_checker[strlen(address_checker)-1]='\0';
+        if(feof(stat)) break;
+        fgets(mod_time,sizeof(mod_time),stat);
+        fgets(mode,sizeof(mode),stat);
+        if(strcmp(address,address_checker)==0)
         {
-            char final_address[1024];
-            strcpy(final_address,cwd);
-            strcat(final_address,"\\");
-            strcat(final_address,entry->d_name);
-            int a=is_staged(final_address,1);
-            if(a==-1) {printf("%s -D\n",final_address);return 0;}
-            else if(a==0){printf("%s -M",address);}
+            if(strcmp(mode,"ss\n")==0) {flag=1;stage='+';}
+            else if(strcmp(mode,"uu\n")==0) {flag=1;stage='-';}
+            else{chdir(cwd);return 0;}
+            break;
         }
     }
-    closedir(dir);
+    fclose(stat);
+    int last=sequence_finder(address)[0];
+    if(last==-1) {printf("%s : %cA",address,stage);chdir(cwd);return 0;}
+    else
+    {
+        char final_address[4];
+        sprintf(final_address,"%d",last);
+        chdir("../config");
+        chdir(final_address);
+        FILE* com_stat=fopen("status.txt","r");
+         char add_checker[1024];
+         char w_time[100];
+        while(1)
+        {
+            fgets(add_checker,sizeof(add_checker),com_stat);
+            add_checker[strlen(add_checker)-1]='\0';
+            if(feof(com_stat)) break;
+            if(strcmp(add_checker,address)==0)
+            {
+                fgets(w_time,sizeof(w_time),com_stat);
+                w_time[strlen(w_time)-1]='\0';
+                break;
+            }
+        }
+        fclose(com_stat);
+        if(strcmp(w_time,last_modified_check(address))==0) {printf("%s : not_changed\n",address);chdir(cwd);return 0;}
+        else{printf("%s : %cM\n",address,stage);chdir(cwd);return 0;}
+    }
+    chdir(cwd);
 }
 
 int main(int argc,char* argv[])
@@ -920,9 +1057,224 @@ else if(strcmp(argv[1],"remove")==0)
 
 else if(strcmp(argv[1],"log")==0)
 {
-    
-}
+    char cwd[1024];
+    getcwd(cwd,sizeof(cwd));
+    chdir(existance(".nimkat"));
+    int  last_commit;
+    FILE* l_com=fopen("last_com.txt","r");
+    if(l_com==NULL){printf("contact us!");return 0;}
+    fscanf(l_com,"%d",&last_commit);
+    fclose(l_com);
 
+    if(argc==2)
+    {
+        for(int i=last_commit;i>=1;i--)
+        {
+            commit_info(i);
+        }
+    }
+    else if(strcmp(argv[2],"-n")==0)
+    {
+        int number=atoi(argv[3]);
+        for(int i=last_commit;i>last_commit-number;i--)
+        {
+            commit_info(i);
+        }
+    }
+    else if(strcmp(argv[2],"-branch")==0)
+    {
+        chdir("config");
+        char br_name[50];
+        for(int i=last_commit;i>=1;i--)
+        {
+            char folder_name[4];
+            sprintf(folder_name,"%d",i);
+            chdir(folder_name);
+            FILE* b_name=fopen("branch.txt","r");
+            fgets(br_name,sizeof(br_name),b_name);
+            fclose(b_name);
+            if(strcmp(argv[3],br_name)==0) commit_info(i);
+            chdir("..");
+        }
+        chdir(cwd);
+    }
+    else if(strcmp(argv[2],"-author")==0)
+    {
+        chdir("config");
+        char au_name[50];
+        for(int i=last_commit;i>=1;i--)
+        {
+            char folder_name[4];
+            sprintf(folder_name,"%d",i);
+            chdir(folder_name);
+            FILE* a_name=fopen("author.txt","r");
+            fgets(au_name,sizeof(au_name),a_name);
+            fclose(a_name);
+            au_name[strlen(au_name)-1]='\0';
+            if(strcmp(argv[3],au_name)==0) commit_info(i);
+            chdir("..");
+        }
+        chdir(cwd);
+    }
+    else if (strcmp(argv[2],"-search")==0)
+    {
+        chdir("config");
+        char mess[50];
+        int flag;
+        int r;
+        for(int i=last_commit;i>=1;i--)
+        {
+            char folder_name[4];
+            sprintf(folder_name,"%d",i);
+            chdir(folder_name);
+            FILE* m=fopen("message.txt","r");
+            fgets(mess,sizeof(mess),m);
+            fclose(m);
+            flag=0;
+            r=0;
+            while(argv[r]!=NULL)
+            {
+                if(strstr(mess,argv[r])!=NULL) {commit_info(i); break;}
+                r++;
+            }
+            chdir("..");
+        }
+        chdir(cwd);
+    }
+    else if(strcmp(argv[2],"-since")==0)
+    {
+        chdir("config");
+        for(int i=last_commit;i>=1;i--)
+        {
+            char com_folder[4];
+            char commit_time[50];
+            sprintf(com_folder,"%d",i);
+            chdir(com_folder);
+            FILE* com_time=fopen("time.txt","r");
+            fgets(commit_time,sizeof(commit_time),com_time);
+            commit_time[strlen(commit_time)-1]='\0';
+            if(time_compare(commit_time,argv[3])>=0) commit_info(i);
+            else break;
+            fclose(com_time);
+            chdir("..");
+        }
+    }
+    else if (strcmp(argv[2],"-before")==0)
+    {
+        chdir("config");
+        for(int i=last_commit;i>=1;i--)
+        {
+            char com_folder[4];
+            char commit_time[50];
+            sprintf(com_folder,"%d",i);
+            chdir(com_folder);
+            FILE* com_time=fopen("time.txt","r");
+            fgets(commit_time,sizeof(commit_time),com_time);
+            commit_time[strlen(commit_time)-1]='\0';
+            if(time_compare(commit_time,argv[3])<=0) commit_info(i);
+            fclose(com_time);
+            chdir("..");
+        }
+    }
+    chdir(cwd);
+}   
+
+else if(strcmp(argv[1],"status")==0)
+{
+    char cwd[1024];
+    getcwd(cwd,1024);
+    char folder_name[50];
+    strcpy(folder_name,folfile_name(cwd,0));
+    chdir(existance(".nimkat"));
+    chdir(branch_name);
+    FILE* stat= fopen("status.txt","r");
+    char address_checker[1024];
+    char mode[4];
+    char  mod_time[100];
+    while(1)
+    {
+        fgets(address_checker,sizeof(address_checker),stat);
+        address_checker[strlen(address_checker)-1]='\0';
+        if(feof(stat)) break;
+        fgets(mod_time,sizeof(mod_time),stat);
+        fgets(mode,sizeof(mode),stat);
+        if(strcmp(folfile_name(address_checker,1),folder_name)==0)
+        {
+            if(strcmp(mode,"sd\n")==0) printf("%s :+D\n",address_checker);
+            else if(strcmp(mode,"ud\n")==0) printf("%s : -D\n",address_checker);
+        }
+    }
+    fclose(stat);
+    chdir(cwd);
+    DIR* w_dir=opendir(".");
+    struct dirent* entry;
+    while((entry=readdir(w_dir))!=NULL)
+    {
+        if(entry->d_type!=DT_DIR)
+        {
+           run_status(rel_to_abs(entry->d_name));
+        }
+    }
+} 
+
+else if(strcmp(argv[1],"branch")==0)
+{
+        chdir(existance(".nimkat"));
+        int  last_commit;
+        FILE* l_com=fopen("last_com.txt","r");
+        if(l_com==NULL){printf("contact us!");chdir(cwd);return 0;}
+        fscanf(l_com,"%d",&last_commit);
+        fclose(l_com);
+
+        FILE* brs=fopen("branches.txt","a");
+        fprintf(brs,"%s\n",argv[2]);
+        fclose(brs);
+
+        char  folder_name[4];
+        sprintf(folder_name,"%d",last_commit);
+
+        chdir("config");
+        chdir(folder_name);
+        char br_name[50];
+        FILE* b_name=fopen("branch.txt","r");
+        fgets(br_name,sizeof(br_name),b_name);
+        fclose(b_name);
+
+        chdir("../..");
+        mkdir(argv[2]);
+        chdir(argv[2]);
+        FILE* head=fopen("head_id.txt","w");
+        fclose(head);
+        char command[2000];
+        sprintf(command,"copy %s\\%s\\status.txt %s\\%s\\status.txt",existance(".nimkat"),br_name,existance(".nimkat"),argv[2]);
+        system(command);
+        sprintf(command,"copy %s\\%s\\last_stages.txt %s\\%s\\last_stages.txt",existance(".nimkat"),br_name,existance(".nimkat"),argv[2]);
+        system(command);
+        
+        char command1[2000];
+        chdir("../..");
+        DIR* dir=opendir(".");
+        struct dirent* entry;
+        while((entry=readdir(dir))!=NULL)
+        {
+            if((strcmp(entry->d_name,".nimkat"))&&(strcmp(entry->d_name,"."))&&(strcmp(entry->d_name ,"..")))
+            {
+                sprintf(command1,"xcopy %s\\..\\%s %s\\%s",existance(".nimkat"),entry->d_name,existance(".nimkat"),argv[2]);
+                system(command1);
+            }
+        }
+    }
+     if(argc==2)
+    {
+        char name[50];
+        chdir(existance(".nimkat"));
+        FILE* fi=fopen("branches.txt","r");
+        while(1)
+        {   fgets(name,sizeof(name),fi);
+            if(feof(fi)) break;
+            printf("%s",name);
+        }
+}
 else
 {
     if(existance(".nimkat")==NULL) printf("you have not already initialized!");
