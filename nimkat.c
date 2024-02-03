@@ -383,6 +383,10 @@ int run_init(int argc,char* argv[])
      FILE* branch=fopen(".nimkat\\branches.txt","w");
      fprintf(branch,"master\n");
      fclose(branch);
+     FILE* tag=fopen(".nimkat\\tags.txt","w");
+     fclose(tag);
+     FILE* tagn=fopen(".nimkat\\tagnames.txt","w");
+     fclose(tagn);
     }
 }
 
@@ -736,6 +740,93 @@ int run_status(char address[])
         else{printf("%s : %cM\n",address,stage);chdir(cwd);return 0;}
     }
     chdir(cwd);
+}
+
+int add_tag(int com_id, char message[],char mode,char name[])
+{
+int flag=0;
+char cwd[1024];
+getcwd(cwd,sizeof(cwd));
+chdir(existance(".nimkat"));
+FILE* tag=fopen("tags.txt","r");
+FILE* temp=fopen("tag1.txt","w");
+char w_name[100],m[3],id[4],author[50],w_mess[100];
+while(1)
+{
+    fgets(w_name,sizeof(w_name),tag);
+    w_name[strlen(w_name)-1]='\0';
+    if(feof(tag)) break;
+    if(strcmp(w_name,name)==0)
+    {
+        flag=1;
+        fgets(m,sizeof(m),tag);
+        if(strcmp(m,"o\n")==0){printf("the tag already exists and you can't over write it!");fclose(temp);remove("tag1.txt");chdir(cwd);return 0;}
+        else
+        {
+            fprintf(temp,"%s\n",w_name);
+            fprintf(temp,"%c\n",mode);
+            fprintf(temp,"%d\n",com_id);
+            FILE* aut_name=fopen("config/name.txt","r");
+            fgets(author,sizeof(author),aut_name);
+            fclose(aut_name);
+            fprintf(temp,"%s\n",author);
+            time_t wri_t = time(NULL);
+            fprintf(temp,"%s",ctime(&wri_t));
+            fprintf(temp,"%s\n",message);
+           fgets(w_name,sizeof(w_name),tag);fgets(w_name,sizeof(w_name),tag);fgets(w_name,sizeof(w_name),tag);fgets(w_name,sizeof(w_name),tag);
+        }
+    }
+    else
+    {
+        fprintf(temp,"%s\n",w_name);
+    }
+}
+fclose(tag);
+fclose(temp);
+char command[2000];
+sprintf(command,"copy %s\\tag1.txt %s\\tags.txt",existance(".nimkat"),existance(".nimkat"));
+system(command);
+remove("tag1.txt");
+if(flag==0)
+{
+    FILE* a_tag=fopen("tags.txt","a");
+    fprintf(a_tag,"%s\n",name);
+    fprintf(a_tag,"%c\n",mode);
+    fprintf(a_tag,"%d\n",com_id);
+    FILE* au_name=fopen("config/name.txt","r");
+    fgets(author,sizeof(author),au_name);
+    fclose(au_name);
+    fprintf(a_tag,"%s\n",author);
+    time_t wr_t = time(NULL);
+    fprintf(a_tag,"%s",ctime(&wr_t));
+    fprintf(a_tag,"%s\n",message);
+    fclose(a_tag);
+
+    char moving_point[50];
+    FILE* tagn=fopen("tagnames.txt","r");
+    FILE* tagn1=fopen("tagnames1.txt","w");
+    int fl=0;
+    while(1)
+    {
+        fgets(moving_point,sizeof(moving_point),tagn);
+        moving_point[strlen(moving_point)-1]='\0';
+        if(feof(tagn)) break;
+        if(strcmp(moving_point,name)>0)
+        {
+            fl=1;
+            fprintf(tagn1,"%s\n",name);
+        }
+        fprintf(tagn1,"%s\n",moving_point);
+    }
+    if(fl==0) fprintf(tagn1,"%s\n",name);
+    fclose(tagn);
+    fclose(tagn1);
+    char command3[2000];
+    sprintf(command3,"copy %s\\tagnames1.txt %s\\tagnames.txt",existance(".nimkat"),existance(".nimkat"));
+    system(command3);
+    remove("tagnames1.txt");
+}
+chdir(cwd);
 }
 
 int main(int argc,char* argv[])
@@ -1219,6 +1310,10 @@ else if(strcmp(argv[1],"status")==0)
 
 else if(strcmp(argv[1],"branch")==0)
 {
+    char cwd[1024];
+    getcwd(cwd,sizeof(cwd));
+    if(argc>2)
+    {
         chdir(existance(".nimkat"));
         int  last_commit;
         FILE* l_com=fopen("last_com.txt","r");
@@ -1269,12 +1364,108 @@ else if(strcmp(argv[1],"branch")==0)
         char name[50];
         chdir(existance(".nimkat"));
         FILE* fi=fopen("branches.txt","r");
+        if(fi==NULL){printf("salam");return 0;}
         while(1)
         {   fgets(name,sizeof(name),fi);
             if(feof(fi)) break;
             printf("%s",name);
         }
+        fclose(fi);
+    }    
 }
+
+else if(strcmp(argv[1],"tag")==0)
+{
+    char cwd[1024];
+    getcwd(cwd,1024);
+    int  cur_id;
+    if(chdir(existance(".nimkat"))!=0) {printf("can't open .nimkat!");return 0;}
+    FILE* current=fopen("cur_com.txt","r");
+    if(current==NULL){printf("can't find the current id");chdir(cwd);return 0;}
+    fscanf(current,"%d",&cur_id);
+    fclose(current);
+    if(argc==2)
+    {
+        FILE* tagn=fopen("tagnames.txt","r");
+        char name_printer[50];
+        while(1)
+        {
+            fgets(name_printer,sizeof(name_printer),tagn);
+            if(feof(tagn)) break;
+            printf("%s",name_printer);
+        }
+        fclose(tagn);
+    }
+    else if((argc==4)&&(strcmp(argv[2],"show")==0))
+    {
+        FILE* tag=fopen("tags.txt","r");
+        char moving_point[100];
+        while(1)
+        {
+            fgets(moving_point,sizeof(moving_point),tag);
+            moving_point[strlen(moving_point)-1]='\0';
+            if(feof(tag)) break;
+            if(strcmp(moving_point,argv[3])==0)
+            {
+                printf("tag %s\n",argv[3]);
+                fgets(moving_point,sizeof(moving_point),tag);
+                fgets(moving_point,sizeof(moving_point),tag);
+                moving_point[strlen(moving_point)-1]='\0';
+                printf("commit id: %s\n",moving_point);
+                fgets(moving_point,sizeof(moving_point),tag);
+                moving_point[strlen(moving_point)-1]='\0';
+                printf("Author: %s\n",moving_point);
+                fgets(moving_point,sizeof(moving_point),tag);
+                moving_point[strlen(moving_point)-1]='\0';
+                printf("Dte and time: %s\n",moving_point);
+                fgets(moving_point,sizeof(moving_point),tag);
+                moving_point[strlen(moving_point)-1]='\0';
+                printf("Message: %s\n",moving_point);
+            }
+        }
+
+        fclose(tag);
+    }
+   
+    else if(argc==4)
+    {
+        add_tag(cur_id,"",'o',argv[3]);
+    }
+   else if(argc==5)
+   {
+    add_tag(cur_id,"",'f',argv[3]);
+   }
+   else if((argc==6)&&(strcmp(argv[4],"-m")==0))
+   {
+        add_tag(cur_id,argv[5],'o',argv[3]);
+   }
+   else if((argc==6)&&(strcmp(argv[4],"-c")==0))
+   {
+        int i=atoi(argv[5]);
+        add_tag(i,"",'o',argv[3]);
+   }
+   else if((argc==7)&&(strcmp(argv[4],"-m")==0))
+   {
+        add_tag(cur_id,argv[5],'f',argv[3]);
+   }
+   else if((argc==7)&&(strcmp(argv[4],"-c")==0))
+   {
+        int i=atoi(argv[5]);
+        add_tag(i,"",'f',argv[3]);    
+   }
+   else if(argc==8)
+   {
+        int i=atoi(argv[7]);
+        add_tag(i,argv[5],'o',argv[3]);
+   }
+   else
+   {
+    int i=atoi(argv[7]);
+    add_tag(i,argv[5],'f',argv[3]);
+   }
+    chdir(cwd);
+}
+
 else
 {
     if(existance(".nimkat")==NULL) printf("you have not already initialized!");
