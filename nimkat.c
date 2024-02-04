@@ -388,6 +388,7 @@ int run_init(int argc,char* argv[])
      fclose(tag);
      FILE* tagn=fopen(".nimkat\\tagnames.txt","w");
      fclose(tagn);
+     mkdir("stage_area");
     }
 }
 
@@ -472,7 +473,7 @@ int run_add(char address[])
                 fseek(addd,a,SEEK_SET);
                 fprintf(addd,"%s\n",time);
                 if(exist==NULL) fprintf(addd,"sd\n");
-                else fprintf(addd,"ss\n");
+                else {fprintf(addd,"ss\n"); char command[2000];sprintf(command,"copy %s %s\\stage_area" ,address,existance(".nimkat"));system(command);}
                 fclose(addd);
                 new_addings++;
                 strcpy(store_numbers[new_addings],address);  
@@ -493,6 +494,7 @@ int run_add(char address[])
             fclose(new_add);
             new_addings++;
             strcpy(store_numbers[new_addings],address);
+            char command[2000];sprintf(command,"copy %s %s\\stage_area" ,address,existance(".nimkat"));system(command);
         }
     }
     fclose(exist);
@@ -573,7 +575,7 @@ int is_staged(char address[],short int m)
                 fgets(mode,4,status);
                 if(m==1)
                 {
-                    if(strcmp(mode,"dd\n")==0) return -2;
+                    if(strcmp(mode,"dd\n")==0) {return -2;}
                     if((strcmp(time,written_time)==0)&&(exist!=NULL)&&(strcmp(mode,"ss\n")==0)) return 1;
                     else if((strcmp(time,written_time)==0)&&(exist==NULL)&&(strcmp(mode,"sd\n")==0)) return 2;
                     else if(exist!=NULL) return 0;
@@ -586,7 +588,13 @@ int is_staged(char address[],short int m)
                         fopen("status.txt","r+");
                         fseek(status,c,SEEK_SET);
                         fprintf(status,"u");
-                        if(strcmp(mode,"ss\n")==0) fprintf(status,"u");
+                        if(strcmp(mode,"ss\n")==0) 
+                        {
+                            fprintf(status,"u");
+                            chdir(existance(".nimkat"));
+                            chdir("stage_area");
+                            remove(folfile_name(address,0));
+                        }
                         fclose(status);
                     return 2;
                     }
@@ -1064,6 +1072,7 @@ if(strcmp(argv[2],"-undo")==0)
         reset_address[strlen(reset_address)-1]='\0';
         if(feof(file1)) break;
         is_staged(reset_address,0);
+        chdir(cwd);
     }
     fclose(file1);   
 }
