@@ -17,6 +17,7 @@ char output[1024];
 char tokenized[20][1024];
 char commited[20][1024];
 int sequence[50];
+char moving[1024];
 int month_finder(char month[])
 {
     if(strcmp(month,"Jan")==0) return 0; else if(strcmp(month,"Feb")==0) return 1; else if(strcmp(month,"Mar")==0) return 2; else if(strcmp(month,"Apr")==0) return 3;
@@ -829,8 +830,93 @@ if(flag==0)
 chdir(cwd);
 }
 
+char * line_finder(int number,char address[])
+{
+    FILE* file=fopen(address,"r");
+    if(file==NULL) {printf("the file does not exist!"); return NULL;}
+    int line_count=0;
+    while((line_count<number)&&(!feof(file)))
+    {
+        fgets(moving,sizeof(moving),file);
+        if(feof(file)) break;
+        /*if(strcmp(moving,"\n"))*/line_count++;
+    }
+    if(line_count<number) return NULL;
+    else return moving;
+}
+
+int compare_line(char line1[],char line2[])
+{
+    int flag=0;
+    char* token1,*token2;
+    token1=strtok(line1," ");
+    token2=strtok(line2," ");
+    while((token1!=NULL)||(token2!=NULL))
+    {
+      if(strcmp(token1,token2))
+      {
+        flag=1;
+        break;
+      }
+      token1=strtok(NULL," ");
+      token2=strtok(NULL," ");
+    }
+    return flag;
+}
+
+int file_compare(char address1[],int begin1,int end1,char address2[],int begin2,int end2)
+{
+     FILE* temp1=fopen("temparory1.txt","w");
+    FILE* temp2=fopen("temparory2.txt","w");
+    for(int i =begin1;i<=end1;i++)
+    {
+        fprintf(temp1,"%s",line_finder(i,address1));
+    }
+    for(int i=begin2;i<=end2;i++)
+    {
+        fprintf(temp2,"%s",line_finder(i,address2));
+    }
+    fclose(temp1);
+    fclose(temp2);
+    int i1=1;int i2=1;
+    char add1[30]="temporary1.txt";
+    char add2[30]="temporary2.txt";
+    while((line_finder(i1,add1)!=NULL)||(line_finder(i2,add2)!=NULL))
+    {
+        char line1[200];
+        char line2[200];
+        strcpy(line1,line_finder(i1,add1));
+        strcpy(line2,line_finder(i2,add2));
+        if((strcmp(strtok(line1," "),"\n"))&&(strcmp(strtok(line2," "),"\n")))
+        {
+            if(compare_line(line1,line2))
+            {
+                printf("«««««\n");
+                printf("%s-%d\n",folfile_name(address1,0),i1+begin1-1);
+                printf("%s\n",line1);
+                printf("%s-%d\n",folfile_name(address2,0),i2+begin2-1);
+                printf("%s\n",line2);
+                printf("»»»»»\n");
+            }
+            i1++;
+            i2++;
+        }
+        if(strcmp(strtok(line1," "),"\n")==0) i1++;
+        if(strcmp(strtok(line2," "),"\n")==0) i2++;
+    }
+    remove("temporary1.txt");
+    remove("temporary2.txt");
+}
+
+int line_number(char address[])
+{
+    int line_count=0;
+    while(line_finder(line_count+1,address)!=NULL) line_count+=1;
+    return line_count;
+}
 int main(int argc,char* argv[])
 {
+    if((strcmp(argv[1],"init"))&&(existance(".nimkat")==NULL)) {printf("you are not initialized yet!");return 1;}
 if(existance(".nimkat")!=NULL) {char w_dir[1024];getcwd(w_dir,sizeof(w_dir));chdir(existance(".nimkat"));FILE* file=fopen("cur_branch.txt","r");fgets(branch_name,sizeof(branch_name),file);fclose(file);chdir(w_dir);}
 if(argc<=1) {printf("just my name is not enough!");return 1;}
 
@@ -858,7 +944,29 @@ else if((strcmp(argv[1],"config")==0))
     else if(strncmp(argv[n],"nimkat config user.email",strlen("nimkat config user.email"))==0) flag=1;
     else if(strncmp(argv[n],"nimkat config -global alias.",strlen("nimkat config -global alias."))==0) flag=1;
     else if(strncmp(argv[n],"nimkat config alias.",strlen("nimkat config alias."))==0) flag=1;
-    
+    else if(strncmp(argv[n],"nimkat add",strlen("nimkat add"))==0) flag=1;
+    else if(strncmp(argv[n],"nimkat add",strlen("nimkat add"))==0) flag=1;
+    else if(strncmp(argv[n],"nimkat reset",strlen("nimkat reset"))==0) flag=1;
+    else if(strncmp(argv[n],"nimkat status",strlen("nimkat status"))==0) flag=1;
+    else if(strncmp(argv[n],"nimkat commit -m",strlen("nimkat commit -m"))==0) flag=1;
+    else if(strncmp(argv[n],"nimkat set -m",strlen("nimkat set -m"))==0) flag=1;
+    else if(strncmp(argv[n],"nimkat replace -m",strlen("nimkat replace -m"))==0) flag=1;
+    else if(strncmp(argv[n],"nimkat remove -s",strlen("nimkat remove -s"))==0) flag=1;
+    else if(strncmp(argv[n],"nimkat log -n",strlen("nimkat log -n"))==0) flag=1;
+    else if(strncmp(argv[n],"nimkat log -branch",strlen("nimkat log -branch"))==0) flag=1;
+    else if(strncmp(argv[n],"nimkat log -author",strlen("nimkat log -author"))==0) flag=1;
+    else if(strncmp(argv[n],"nimkat log -since",strlen("nimkat log -since"))==0) flag=1;
+    else if(strncmp(argv[n],"nimkat log -before",strlen("nimkat log -before"))==0) flag=1;
+    else if(strncmp(argv[n],"nimkat log -search",strlen("nimkat log -search"))==0) flag=1;
+    else if((strncmp(argv[n],"nimkat log",strlen("nimkat log"))==0)&&(strlen(argv[n])==strlen("nimkat log"))) flag=1;
+    else if(strncmp(argv[n],"nimkat branch",strlen("nimkat branch"))==0) flag=1;
+    else if(strncmp(argv[n],"nimkat log -before",strlen("nimkat log -before"))==0) flag=1;
+    else if(strncmp(argv[n],"nimkat checkout",strlen("nimkat checkout"))==0) flag=1;
+    else if(strncmp(argv[n],"nimkat revert",strlen("nimkat revert"))==0) flag=1;
+    else if(strncmp(argv[n],"nimkat tag -a",strlen("nimkat tag -a"))==0) flag=1;
+    else if(strncmp(argv[n],"nimkat  diff -f",strlen("nimkat diff -f"))==0) flag=1;
+    else if(strncmp(argv[n],"nimkat diff -c",strlen("nimkat diff -c"))==0) flag=1;
+    else if(strncmp(argv[n],"nimkat merge -b",strlen("nimkat merge -b"))==0) flag=1;
     if(flag==0) {printf("Invalid command!");return 1;}
     else
     {
@@ -893,13 +1001,13 @@ else if(strcmp(argv[1],"add")==0)
                 strcpy(final_address,cwd);
                 strcat(final_address,"\\");
                 strcat(final_address,entry->d_name);
-                if((strcmp(entry->d_name,".."))&&(strcmp(entry->d_name,"."))&&(entry->d_type==DT_DIR))
+                if(strcmp(entry->d_name,".nimkat")&&(strcmp(entry->d_name,".."))&&(strcmp(entry->d_name,"."))&&(entry->d_type==DT_DIR))
                 {
                     int a=staged_folder(final_address,1);
                     if(a==1) printf("%s :is sataged\n",final_address);
                     else printf("%s :is not staged\n",final_address);
                 }
-                else if(strcmp(entry->d_name,".")&&(strcmp(entry->d_name,"..")))
+                else if(strcmp(entry->d_name,".nimkat")&&strcmp(entry->d_name,".")&&(strcmp(entry->d_name,"..")))
                 {
                     int a=is_staged(final_address,1);
                     if(a==1) printf("%s :is sataged\n",final_address);
@@ -937,6 +1045,8 @@ else if(strcmp(argv[1],"add")==0)
 }
 else if(strcmp(argv[1],"reset")==0)
 {
+    char cwd[1024];
+    getcwd(cwd,sizeof(cwd));
 if(existance(".nimkat")==NULL) {printf("you have not initialized yet!"); return 0;}
 if(strcmp(argv[2],"-undo")==0)
 {
@@ -954,6 +1064,44 @@ if(strcmp(argv[2],"-undo")==0)
         is_staged(reset_address,0);
     }
     fclose(file1);   
+}
+else if(argc>3)
+{
+    int k;
+    if(strcmp(argv[2],"-f")==0) k=3;
+    else k=2;
+    while(argv[k]!=NULL)
+    {
+        char to_reset[1024];
+    strcpy(to_reset,rel_to_abs(argv[k]));
+    int flag=0;
+    chdir(existance(".nimkat"));
+    chdir(branch_name);
+    FILE* status=fopen("status.txt","r");
+    char ad_check[1024];
+    while(1)
+    {
+        fgets(ad_check,1024,status);
+        ad_check[strlen(ad_check)-1]='\0';
+        if(feof(status)) break;
+        if(strcmp(ad_check,to_reset)==0) {flag=1;break;}
+    }
+    FILE* file=fopen(to_reset,"r");
+    DIR* dir=opendir(to_reset);
+    if((file==NULL)&&(dir==NULL)&&(flag==0)) {chdir(cwd);printf("insert a valid address!");return 0;}
+    else if(dir==NULL)
+    {
+        is_staged(to_reset,0);
+    }
+    else if(dir!=NULL)
+    {
+        staged_folder(to_reset,0);
+    }
+    fclose(file);
+    closedir(dir);
+    chdir(cwd);
+        k++;
+    }
 }
 else
 {
@@ -984,6 +1132,7 @@ else
     }
     fclose(file);
     closedir(dir);
+    chdir(cwd);
 }
 }
 
@@ -1345,19 +1494,20 @@ else if(strcmp(argv[1],"branch")==0)
         system(command);
         sprintf(command,"copy %s\\%s\\last_stages.txt %s\\%s\\last_stages.txt",existance(".nimkat"),br_name,existance(".nimkat"),argv[2]);
         system(command);
-        
-        char command1[2000];
-        chdir("../..");
-        DIR* dir=opendir(".");
-        struct dirent* entry;
-        while((entry=readdir(dir))!=NULL)
-        {
-            if((strcmp(entry->d_name,".nimkat"))&&(strcmp(entry->d_name,"."))&&(strcmp(entry->d_name ,"..")))
-            {
-                sprintf(command1,"xcopy %s\\..\\%s %s\\%s",existance(".nimkat"),entry->d_name,existance(".nimkat"),argv[2]);
-                system(command1);
-            }
-        }
+        sprintf(command,"copy %s\\%s\\head_id.txt %s\\%s\\head_id.txt",existance(".nimkat"),br_name,existance(".nimkat"),argv[2]);
+        system(command);
+        // char command1[2000];
+        // chdir("../..");
+        // DIR* dir=opendir(".");
+        // struct dirent* entry;
+        // while((entry=readdir(dir))!=NULL)
+        // {
+        //     if((strcmp(entry->d_name,".nimkat"))&&(strcmp(entry->d_name,"."))&&(strcmp(entry->d_name ,"..")))
+        //     {
+        //         sprintf(command1,"xcopy %s\\..\\%s %s\\%s",existance(".nimkat"),entry->d_name,existance(".nimkat"),argv[2]);
+        //         system(command1);
+        //     }
+        // }
     }
      if(argc==2)
     {
@@ -1464,6 +1614,36 @@ else if(strcmp(argv[1],"tag")==0)
     add_tag(i,argv[5],'f',argv[3]);
    }
     chdir(cwd);
+}
+
+else if((strcmp(argv[1],"diff")==0)&&(strcmp(argv[2],"-f")==0))
+{
+    char address1[1024],address2[1024];
+    strcpy(address1,rel_to_abs(argv[3]));
+    strcpy(address2,rel_to_abs(argv[4]));
+    if(argc==9)
+    {
+        int begin1,begin2,end1,end2;
+        sscanf(argv[6],"%d-%d",&begin1,&end1);
+        sscanf(argv[8],"%d-%d",&begin2,&end2);
+        file_compare(address1,begin1,end1,address2,begin2,end2);
+    }
+    else if((argc==7)&&(strcmp(argv[5],"-line1")==0))
+    {
+        int begin2,end2;
+        sscanf(argv[6],"%d-%d",&begin2,&end2);
+        file_compare(address1,1,line_number(address1),address2,begin2,end2);
+    }
+    else if((argc==7)&&(strcmp(argv[5],"-line2")==0))
+    {
+        int begin1,end1;
+        sscanf(argv[6],"%d-%d",&begin1,&end1);
+        file_compare(address1,begin1,end1,address2,1,line_number(address2));
+    }
+    else
+    {
+        file_compare(address1,1,line_number(address1),address2,1,line_number(address2));
+    }
 }
 
 else
