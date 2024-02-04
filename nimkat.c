@@ -830,88 +830,90 @@ if(flag==0)
 chdir(cwd);
 }
 
-char * line_finder(int number,char address[])
+void line_debuger(char line[])
 {
-    FILE* file=fopen(address,"r");
-    if(file==NULL) {printf("the file does not exist!"); return NULL;}
-    int line_count=0;
-    while((line_count<number)&&(!feof(file)))
+    int j=0;
+    char correct_line[strlen(line)+1];
+    for(int i=0;i<strlen(line);i++)
     {
-        fgets(moving,sizeof(moving),file);
-        if(feof(file)) break;
-        /*if(strcmp(moving,"\n"))*/line_count++;
+        if(line[i]==' ')
+        {
+            if((i!=0)&&(line[i-1]!=' ')) {correct_line[j]=line[i];j++;}
+        }
+        else if((line[i]!='\n')&&(line[i]!='\0')) {correct_line[j]=line[i];j++;}
     }
-    if(line_count<number) return NULL;
-    else return moving;
-}
-
-int compare_line(char line1[],char line2[])
-{
-    int flag=0;
-    char* token1,*token2;
-    token1=strtok(line1," ");
-    token2=strtok(line2," ");
-    while((token1!=NULL)||(token2!=NULL))
-    {
-      if(strcmp(token1,token2))
-      {
-        flag=1;
-        break;
-      }
-      token1=strtok(NULL," ");
-      token2=strtok(NULL," ");
-    }
-    return flag;
+    correct_line[j]='\0';
+    strcpy(line,correct_line);
 }
 
 int file_compare(char address1[],int begin1,int end1,char address2[],int begin2,int end2)
 {
-     FILE* temp1=fopen("temparory1.txt","w");
+    char mover1[200];
+    char mover2[200];
+    FILE* temp1=fopen("temparory1.txt","w");
     FILE* temp2=fopen("temparory2.txt","w");
-    for(int i =begin1;i<=end1;i++)
+    FILE* add1=fopen(address1,"r");
+    FILE* add2=fopen(address2,"r");
+    for(int i=1;i<begin1;i++) fgets(mover1,sizeof(mover1),add1);
+    for(int i=1;i<begin2;i++) fgets(mover2,sizeof(mover2),add2);
+    for(int i=0;i<=end1-begin1;i++)
     {
-        fprintf(temp1,"%s",line_finder(i,address1));
+        fgets(mover1,sizeof(mover1),add1);
+        fprintf(temp1,"%s",mover1);
     }
-    for(int i=begin2;i<=end2;i++)
+    for(int i=0;i<=end2-begin2;i++)
     {
-        fprintf(temp2,"%s",line_finder(i,address2));
+        fgets(mover2,sizeof(mover2),add2);
+        fprintf(temp2,"%s",mover2);
     }
     fclose(temp1);
     fclose(temp2);
-    int i1=1;int i2=1;
-    char add1[30]="temporary1.txt";
-    char add2[30]="temporary2.txt";
-    while((line_finder(i1,add1)!=NULL)||(line_finder(i2,add2)!=NULL))
+    FILE* tem1=fopen("temparory1.txt","r");
+    FILE* tem2=fopen("temparory2.txt","r");
+    char real1[200],real2[200];
+    int r1=begin1-1,r2=begin2-1;
+    while(1)
     {
-        char line1[200];
-        char line2[200];
-        strcpy(line1,line_finder(i1,add1));
-        strcpy(line2,line_finder(i2,add2));
-        if((strcmp(strtok(line1," "),"\n"))&&(strcmp(strtok(line2," "),"\n")))
+        fgets(mover1,sizeof(mover1),tem1);
+        if(feof(tem1)) break;
+        r1++;
+        strcpy(real1,mover1);
+        line_debuger(mover1);
+        if(strcmp(mover1,"")==0) continue;
+        while(1)
         {
-            if(compare_line(line1,line2))
-            {
-                printf("«««««\n");
-                printf("%s-%d\n",folfile_name(address1,0),i1+begin1-1);
-                printf("%s\n",line1);
-                printf("%s-%d\n",folfile_name(address2,0),i2+begin2-1);
-                printf("%s\n",line2);
-                printf("»»»»»\n");
-            }
-            i1++;
-            i2++;
+            fgets(mover2,sizeof(mover2),tem2);
+            if(feof(tem2)) break;
+            r2++;
+            strcpy(real2,mover2);
+            line_debuger(mover2);
+            if(strcmp("",mover2)) break;
         }
-        if(strcmp(strtok(line1," "),"\n")==0) i1++;
-        if(strcmp(strtok(line2," "),"\n")==0) i2++;
+        if(strcmp(mover1,mover2))
+        {
+            printf("-----\n");
+            printf("%s-line %d\n",folfile_name(address1,0),r1);
+            printf("%s",real1);
+            printf("%s-line %d\n",folfile_name(address2,0),r2);
+            printf("%s",real2);
+            printf("-----\n");
+        }
     }
+    fclose(add1);
+    fclose(add2);
+    fclose(tem1);
+    fclose(tem2);
     remove("temporary1.txt");
     remove("temporary2.txt");
 }
 
 int line_number(char address[])
 {
+  FILE* file=  fopen(address,"r");
     int line_count=0;
-    while(line_finder(line_count+1,address)!=NULL) line_count+=1;
+    char mover[200];
+    while(fgets(mover,sizeof(mover),file)!=NULL) line_count+=1;
+    fclose(file);
     return line_count;
 }
 int main(int argc,char* argv[])
@@ -1626,18 +1628,22 @@ else if((strcmp(argv[1],"diff")==0)&&(strcmp(argv[2],"-f")==0))
         int begin1,begin2,end1,end2;
         sscanf(argv[6],"%d-%d",&begin1,&end1);
         sscanf(argv[8],"%d-%d",&begin2,&end2);
+        if(end1>line_number(address1)) end1=line_number(address1);
+        if(end2>line_number(address1)) end2=line_number(address2);
         file_compare(address1,begin1,end1,address2,begin2,end2);
     }
     else if((argc==7)&&(strcmp(argv[5],"-line1")==0))
     {
         int begin2,end2;
         sscanf(argv[6],"%d-%d",&begin2,&end2);
+        if(end2>line_number(address2)) end2=line_number(address2);
         file_compare(address1,1,line_number(address1),address2,begin2,end2);
     }
     else if((argc==7)&&(strcmp(argv[5],"-line2")==0))
     {
         int begin1,end1;
         sscanf(argv[6],"%d-%d",&begin1,&end1);
+        if(end1>line_number(address1)) end1=line_number(address1);
         file_compare(address1,begin1,end1,address2,1,line_number(address2));
     }
     else
