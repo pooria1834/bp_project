@@ -205,6 +205,16 @@ int  commit_folder_maker(char commit_message[])
                     system(command1);
                 }
             }
+            
+             DIR* dor=opendir("stage_area");
+            struct dirent* en;
+            while((en=readdir(dor))!=NULL)
+            {
+                if((strcmp(en->d_name,".."))&&(strcmp(en->d_name,".")))
+                {
+                    remove(en->d_name);
+                }
+            }
 
             chdir(branch_name);
             char check[1024];
@@ -366,7 +376,8 @@ int run_init(int argc,char* argv[])
      fclose(tag);
      FILE* tagn=fopen(".nimkat\\tagnames.txt","w");
      fclose(tagn);
-     mkdir("stage_area");
+     mkdir(".nimkat\\stage_area");
+     mkdir(".nimkat\\reset_area");
     }
 }
 
@@ -570,8 +581,9 @@ int is_staged(char address[],short int m)
                         {
                             fprintf(status,"u");
                             chdir(existance(".nimkat"));
-                            chdir("stage_area");
-                            remove(folfile_name(address,0));
+                            char command[2000];
+                            sprintf(command,"move %s\\stage_area\\%s %s\\reset_area",existance(".nimkat"),folfile_name(address,0),existance(".nimkat"));
+                            system(command);
                         }
                         fclose(status);
                     return 2;
@@ -720,7 +732,7 @@ int run_status(char address[])
         }
     }
     closedir(check);
-    if(f==0) {printf("%s : %cA\n",address,stage);chdir(cwd);return 0;}
+    if(f==0) {if((stage=='+')||(stage=='-'))printf("%s : %cA\n",address,stage);chdir(cwd);return 0;}
     else
     {
         FILE* com_stat=fopen("status.txt","r");
@@ -894,11 +906,11 @@ int file_compare(char address1[],int begin1,int end1,char address2[],int begin2,
         {
             printf("-----\n");
             printf("%s-line %d\n",folfile_name(address1,0),r1);
-            if(real1[strlen(real1)-1]=='\n')printf("%s",real1);
-            else printf("%s\n",real1);
+            if(real1[strlen(real1)-1]=='\n')printf("\033[31m%s\033[0m",real1);
+            else printf("\033[31m%s\033[0m\n",real1);
             printf("%s-line %d\n",folfile_name(address2,0),r2);
-           if(real2[strlen(real2)-1]=='\n') printf("%s",real2);
-           else printf("%s\n",real2);
+           if(real2[strlen(real2)-1]=='\n') printf("\033[36m%s\033[0m",real2);
+           else printf("\033[36m%s\033[0m\n",real2);
             printf("-----\n");
         }
     }
@@ -1006,58 +1018,77 @@ int diff (char id1[],char id2[],short m)
 
 int run_checkout(int commit_id)
 {
+    int fl=0;
     char cwd[1024];
     getcwd(cwd,sizeof(cwd));
     chdir(existance(".nimkat"));
-    char current[4];
-    FILE* eval=fopen("cur_com.txt","r");
-    fgets(current,sizeof(current),eval);
-    fclose(eval);
-    chdir("config");
-    chdir(current);
-    DIR* delete=opendir("com_files");
-    struct dirent* del;
-    while((del=readdir(delete))!=NULL)
+
+    DIR* dir=opendir("stage_area");
+    struct dirent* stage_reader;
+    while((stage_reader=readdir(dir))!=NULL)
     {
-        if(del->d_type!=DT_DIR)
-        {
-            remove(find_parent(atoi(current),del->d_name,1));
-        }
+        if(stage_reader->d_type!=DT_DIR) fl=1;
     }
-    closedir(delete);
-    char dest_com[4];
-    sprintf(dest_com,"%d",commit_id);
-    chdir("..");
-    chdir(dest_com);
+    closedir(dir);
 
-    char change_br[50];
-    FILE* br=fopen("branch.txt","r");
-    fgets(change_br,sizeof(change_br),br);
-    fclose(br);
-
-    DIR* to_copy=opendir("com_files");
-    struct dirent* cpl;
-    while((cpl=readdir(to_copy))!=NULL)
+    DIR* dirr=opendir("reset_area");
+    struct dirent* reset_reader;
+    while((reset_reader=readdir(dirr))!=NULL)
     {
-        char  command[2000];
-        if(cpl->d_type!=DT_DIR)
-        {
-            sprintf(command,"copy %s\\config\\%s\\com_files\\%s %s",existance(".nimkat"),dest_com,cpl->d_name,find_parent(commit_id,cpl->d_name,1));
-            system(command);
-        }
+        if(reset_reader->d_type!=DT_DIR) fl=1;
     }
-    closedir(to_copy);
+    closedir(dirr);
+    if(fl==1) {printf("there are some changes that are not commited!");chdir(cwd);return 0;}
+    if(fl==0)
+    {
+        char current[4];
+        FILE* eval=fopen("cur_com.txt","r");
+        fgets(current,sizeof(current),eval);
+        fclose(eval);
+        chdir("config");
+        chdir(current);
+        DIR* delete=opendir("com_files");
+        struct dirent* del;
+        while((del=readdir(delete))!=NULL)
+        {
+            if(del->d_type!=DT_DIR)
+            {
+                remove(find_parent(atoi(current),del->d_name,1));
+            }
+        }
+        closedir(delete);
+        char dest_com[4];
+        sprintf(dest_com,"%d",commit_id);
+        chdir("..");
+        chdir(dest_com);
 
-    chdir(existance(".nimkat"));
-    FILE* cur=fopen("cur_com.txt","w");
-    fprintf(cur,"%d",commit_id);
-    fclose(cur);
-    FILE* branchbranch=fopen("branch.txt","w");
-    
-    fclose(branchbranch);
+        char change_br[50];
+        FILE* br=fopen("branch.txt","r");
+        fgets(change_br,sizeof(change_br),br);
+        fclose(br);
 
+        DIR* to_copy=opendir("com_files");
+        struct dirent* cpl;
+        while((cpl=readdir(to_copy))!=NULL)
+        {
+            char  command[2000];
+            if(cpl->d_type!=DT_DIR)
+            {
+                sprintf(command,"copy %s\\config\\%s\\com_files\\%s %s",existance(".nimkat"),dest_com,cpl->d_name,find_parent(commit_id,cpl->d_name,1));
+                system(command);
+            }
+        }
+        closedir(to_copy);
+
+        chdir(existance(".nimkat"));
+        FILE* cur=fopen("cur_com.txt","w");
+        fprintf(cur,"%d",commit_id);
+        fclose(cur);
+        FILE* branchbranch=fopen("branch.txt","w");
+        fprintf(branchbranch,"%s",change_br);
+        fclose(branchbranch);
+    }
     chdir(cwd);
-    
 }
 
 int main(int argc,char* argv[])
