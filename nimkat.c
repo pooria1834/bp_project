@@ -29,8 +29,8 @@ int time_compare(char date1[],char date2[])
 {
     char month1[4],month2[4];
     int year1,year2,day1,day2,hour1,hour2,min1,min2,sec1,sec2;
-    sscanf(date1,"%*s %s %d %d:%d:%d %d",&month1,&day1,&hour1,&min1,&sec1,&year1);
-    sscanf(date2,"%*s %s %d %d:%d:%d %d",&month2,&day2,&hour2,&min2,&sec2,&year2);
+    sscanf(date1,"%*s %s %d %d:%d:%d %d",month1,&day1,&hour1,&min1,&sec1,&year1);
+    sscanf(date2,"%*s %s %d %d:%d:%d %d",month2,&day2,&hour2,&min2,&sec2,&year2);
     if(year1!=year2) return year1-year2;
     else if(strcmp(month1,month2)) return month_finder(month1)-month_finder(month2);
     else if (day1!=day2) return day1-day2;
@@ -116,30 +116,17 @@ int  commit_folder_maker(char commit_message[])
     char cwd[1024];
     getcwd(cwd,sizeof(cwd));
     chdir(existance(".nimkat"));
-    chdir(branch_name);
-    int count=0;
-    char address[1024];
-    char written_time[100];
-    char mode_checker[4];
-    FILE* stat=fopen("status.txt","r");
-    while(1)
+   DIR* dirr= opendir("stage_area");
+   struct dirent* entry;
+   int flag=0;
+   while((entry=readdir(dirr))!=NULL) 
+   {
+    if((strcmp(entry->d_name,".."))&&(strcmp(entry->d_name,"."))) {flag=1;break;}
+   }
+   closedir(dirr);
+    if(flag==0) {printf("no stage files exist!\n");return 0;}
+    if(flag>0)
     {
-        fgets(address,1024,stat);
-        address[strlen(address)-1]='\0';
-        if(feof(stat)) break;
-        fgets(written_time,100,stat);
-        written_time[strlen(written_time)-1]='\0';
-        fgets(mode_checker,4,stat);
-        if((strcmp(mode_checker,"sd\n")==0)||((mode_checker[0]=='s')&&(strcmp(written_time,last_modified_check(address))==0)))
-        {
-            count++;strcpy(commited[count],address);
-        }
-    }
-    fclose(stat);
-    if(count==0) {printf("no stage files exist!\n");return 0;}
-    if(count>0)
-    {
-    chdir("..");
     FILE* file=fopen("last_com.txt","r");
     if(file==NULL) printf("unable to find the current commit number!");
     else
@@ -149,13 +136,6 @@ int  commit_folder_maker(char commit_message[])
         fscanf(file,"%d",&a);
         fclose(file);
         a+=1;
-        FILE* comm=fopen("..\\commit_sequance.txt","a");
-        fprintf(comm,"*****commit number: %d\n",a);
-        for(int i=1;i<=count;i++)
-        {
-            fprintf(comm,"%s\n",commited[i]);
-        }
-        fclose(comm);
         FILE* f=fopen("..\\last_com.txt","w");
         fprintf(f,"%d",a);
         fclose(f);
@@ -166,6 +146,7 @@ int  commit_folder_maker(char commit_message[])
         sprintf(k,"%d",a);
         mkdir(k);
         chdir(k);
+        mkdir("com_files");
         FILE* id_num=fopen("id_num.txt","w");
             fprintf(id_num,"%d",a);
             fclose(id_num);
@@ -190,77 +171,73 @@ int  commit_folder_maker(char commit_message[])
             fprintf(branch,"%s",br_name);
             fclose(current);
             fclose(branch);
-            char source[1024];
-            sprintf(source,"%s\\%s\\status.txt",existance(".nimkat"),branch_name);
-            FILE* status=fopen(source,"r");
-            char dest[1024];
-            sprintf(dest,"%s\\config\\%s",existance(".nimkat"),k);
-            FILE* ss=fopen("address_of_ss.txt","w");
-            char mod[4];
-            char adr[1024];
-            char written_time[50];
-            while(1)
+
+            chdir(existance(".nimkat"));
+            chdir(branch_name);
+            char head[4];
+            FILE* headed=fopen("head_id.txt","r");
+            fgets(head,sizeof(head),headed);
+            fclose(headed);
+            chdir("../config");
+            chdir(head);
+            DIR* dir=opendir("com_files");
+            struct dirent* ent;
+             char command1[2000];
+            while((ent=readdir(dir))!=NULL)
             {
-                fgets(adr,sizeof(adr),status);
-                adr[strlen(adr)-1]='\0';
-                if(feof(status)) break;
-                fgets(written_time,sizeof(written_time),status);
-                written_time[strlen(written_time)-1]='\0';
-                fgets(mod,sizeof(mod),status);
-                if((strcmp(written_time,last_modified_check(adr))==0)&&(strcmp(mod,"ss\n")==0))
+                if((strcmp(ent->d_name,".."))&&(strcmp(ent->d_name,".")))
                 {
-                    fprintf(ss,"%s\n",adr);
+                    sprintf(command1,"copy %s\\config\\%s\\com_files\\%s %s\\config\\%s\\com_files",existance(".nimkat"),head,entry->d_name,existance(".nimkat"),k);
+                    system(command1);
                 }
             }
-            fclose(ss);
-            fclose(status);
-            mkdir("ss_files");
-            FILE* sss=fopen("address_of_ss.txt","r");
-            char addr[1024];
-            char com1[2050];
-            while(1)
+            closedir(dir);
+
+            chdir(existance(".nimkat"));
+            DIR* dar=opendir("stage_area");
+            struct dirent* enter;
+            while((enter=readdir(dar))!=NULL)
             {
-                strcpy(com1,"\0");
-                fgets(addr,sizeof(addr),sss);
-                addr[strlen(addr)-1]='\0';
-                strcpy(com1,"copy ");strcat(com1,addr);strcat(com1," ");strcat(com1,dest);strcat(com1,"\\ss_files\\");strcat(com1,folfile_name(addr,0));
-                if(feof(sss)) break;
-                system(com1);
+                if((strcmp(enter->d_name,".."))&&(strcmp(enter->d_name,".")))
+                {
+                    sprintf(command1,"move %s\\stage_area\\%s %s\\config\\%s\\com_files",existance(".nimkat"),enter->d_name,existance(".nimkat"),k);
+                    system(command1);
+                }
             }
-            fclose(sss);
+
+            chdir(branch_name);
             char check[1024];
             char mtime[100];
             char mode[4];
-            FILE* change_stat=fopen(source,"r");
+            char f_name[50];
+            FILE* change_stat=fopen("status.txt","r");
             while(1)
             {
                 fgets(check,sizeof(check),change_stat);
+                check[strlen(check)-1]='\0';
+                strcpy(f_name,folfile_name(check,0));
                 if(feof(change_stat)) break;
                 fgets(mtime,sizeof(mtime),change_stat);
                 int c=ftell(change_stat);
                 fgets(mode,sizeof(mode),change_stat);
                 if((strcmp(mode,"sd\n")==0)||(strcmp(mode,"ss\n")==0))
                 {
-                    FILE* f=fopen(source,"r+");
+                    FILE* f=fopen("status.txt","r+");
                     fseek(f,c,SEEK_SET);
-                    if(strcmp(mode,"sd\n")==0) fprintf(f,"dd\n");
+                    if(strcmp(mode,"sd\n")==0) {fprintf(f,"dd\n");chdir("../config");chdir(k);chdir("com_files");remove(f_name);}
                     else fprintf(f,"uu\n");
                     fclose(f);
                 }               
             }
             fclose(change_stat);
-            strcat(dest,"\\status.txt");
-            char command[2048];
-            sprintf(command,"copy %s %s",source,dest);
+            char command[2000];
+            sprintf(command,"copy %s\\%s\\status.txt %s\\config\\%s",existance(".nimkat"),branch_name,existance(".nimkat"),k);
             system(command);
-            FILE* c_num=fopen("commited_num.txt","w");
-            fprintf(c_num,"%d",count);
-            fclose(c_num);
-        chdir(existance(".nimkat"));
-        chdir(br_name);
-        FILE* head=fopen("head_id.txt","w");
-        fprintf(head,"%d",a);
-        fclose(head);
+            chdir(existance(".nimkat"));
+            chdir(branch_name);
+            FILE* kar=fopen("head_id.txt","w");
+            fprintf(kar,"%d",a);
+            fclose(kar);
     }
     }
     chdir(cwd);
@@ -472,7 +449,7 @@ int run_add(char address[])
                 FILE* addd=fopen("status.txt","r+");
                 fseek(addd,a,SEEK_SET);
                 fprintf(addd,"%s\n",time);
-                if(exist==NULL) fprintf(addd,"sd\n");
+                if(exist==NULL) {fprintf(addd,"sd\n");char to_remove[2000];sprintf(to_remove,"%s\\stage_area\\%s",existance(".nimkat"),folfile_name(address,0));remove(to_remove);}
                 else {fprintf(addd,"ss\n"); char command[2000];sprintf(command,"copy %s %s\\stage_area" ,address,existance(".nimkat"));system(command);}
                 fclose(addd);
                 new_addings++;
@@ -924,6 +901,26 @@ int line_number(char address[])
     fclose(file);
     return line_count;
 }
+
+char* find_parent(int id_number,char f_n[])
+{
+    char a[4];
+    sprintf(a,"%d",id_number);
+    chdir(existance(".nimkat"));
+    chdir("config");chdir(a);
+    FILE* stat=fopen("status.txt","r");
+    char move[1024];
+    while(1)
+    {
+        fgets(move,sizeof(move),stat);
+        move[strlen(move)-1]='\0';
+        if(feof(stat)) break;
+        if(strcmp(folfile_name(move,0),f_n)==0) return folfile_name(move,1);
+    }
+    fclose(stat);
+    return NULL;
+}
+
 int main(int argc,char* argv[])
 {
     if((strcmp(argv[1],"init"))&&(existance(".nimkat")==NULL)) {printf("you are not initialized yet!");return 1;}
@@ -1660,6 +1657,33 @@ else if((strcmp(argv[1],"diff")==0)&&(strcmp(argv[2],"-f")==0))
         file_compare(address1,1,line_number(address1),address2,1,line_number(address2));
     }
 }
+
+else if((strcmp(argv[1],"diff")==0)&&(strcmp(argv[2],"-c")==0))
+{
+    char cwd[1024];
+    getcwd(cwd,sizeof(cwd));
+    chdir(existance(".nimkat"));
+    chdir("config");
+    chdir(argv[3]);
+    DIR* first=opendir("com_files");
+    struct dirent* first_reader;
+    chdir("..");
+    chdir(argv[4]);
+    DIR* second=opendir("com_files");
+    struct dirent* second_reader;
+    while((first_reader=readdir(first))!=NULL)
+    {
+        if(first_reader->d_type==DT_DIR) continue;
+        else
+        {
+            
+        }
+    }
+
+    chdir(cwd);
+}
+
+
 
 else
 {
