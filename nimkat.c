@@ -18,6 +18,7 @@ char tokenized[20][1024];
 char commited[20][1024];
 int sequence[50];
 char moving[1024];
+char move[1024];
 int month_finder(char month[])
 {
     if(strcmp(month,"Jan")==0) return 0; else if(strcmp(month,"Feb")==0) return 1; else if(strcmp(month,"Mar")==0) return 2; else if(strcmp(month,"Apr")==0) return 3;
@@ -672,6 +673,8 @@ int* sequence_finder(char address[])
 
 int run_status(char address[])
 {
+    char file_name[50];
+    strcpy(file_name,folfile_name(address,0));
     char cwd[1024];
     getcwd(cwd,sizeof(cwd));
     char stage;
@@ -697,15 +700,29 @@ int run_status(char address[])
             break;
         }
     }
-    fclose(stat);
-    int last=sequence_finder(address)[0];
-    if(last==-1) {printf("%s : %cA",address,stage);chdir(cwd);return 0;}
+    fclose(stat); 
+
+    char headed[4];
+    FILE* file=fopen("head_id.txt","r");
+    fgets(headed,sizeof(headed),file);
+    fclose(file);
+
+    chdir("../config");
+    chdir(headed);
+    int f=0;
+    DIR* check=opendir("com_files");
+    struct dirent* checker;
+    while((checker=readdir(check))!=NULL)
+    {
+        if((checker->d_type!=DT_DIR)&&(strcmp(checker->d_name,file_name)==0))
+        {
+            f=1;break;
+        }
+    }
+    closedir(check);
+    if(f==0) {printf("%s : %cA\n",address,stage);chdir(cwd);return 0;}
     else
     {
-        char final_address[4];
-        sprintf(final_address,"%d",last);
-        chdir("../config");
-        chdir(final_address);
         FILE* com_stat=fopen("status.txt","r");
          char add_checker[1024];
          char w_time[100];
@@ -722,7 +739,7 @@ int run_status(char address[])
             }
         }
         fclose(com_stat);
-        if(strcmp(w_time,last_modified_check(address))==0) {printf("%s : not_changed\n",address);chdir(cwd);return 0;}
+        if(strcmp(w_time,last_modified_check(address))==0) {chdir(cwd);return 0;}
         else{printf("%s : %cM\n",address,stage);chdir(cwd);return 0;}
     }
     chdir(cwd);
@@ -903,20 +920,19 @@ int line_number(char address[])
     return line_count;
 }
 
-char* find_parent(int id_number,char f_n[])
+char* find_parent(int id_number,char f_n[],short m)
 {
     char a[4];
-    printf("%s",a);
+    sprintf(a,"%d",id_number);
     chdir(existance(".nimkat"));
     chdir("config");chdir(a);
     FILE* stat=fopen("status.txt","r");
-    char move[1024];
     while(1)
     {
         fgets(move,sizeof(move),stat);
         move[strlen(move)-1]='\0';
         if(feof(stat)) break;
-        if(strcmp(folfile_name(move,0),f_n)==0) return folfile_name(move,1);
+        if(strcmp(folfile_name(move,0),f_n)==0) if (m==0) {return folfile_name(move,1);} else if(m==1) return move;
     }
     fclose(stat);
     return NULL;
@@ -971,8 +987,8 @@ int diff (char id1[],char id2[],short m)
             struct dirent* second_reader;
             while((second_reader=readdir(second))!=NULL)
             {
-                if(strcmp(first_reader->d_name,second_reader->d_name)==0){flag=1;break;}
-            }
+                if((strcmp(first_reader->d_name,second_reader->d_name)==0)&&(strcmp(find_parent(atoi(id1),first_reader->d_name,0),find_parent(atoi(id2),second_reader->d_name,0))==0)){flag=1;break;}
+            }   
             closedir(second);
             if(flag==0) printf("the file %s doesn't exist in commit %s folder\n",first_reader->d_name,id2);
             else if(m==1)
@@ -986,6 +1002,62 @@ int diff (char id1[],char id2[],short m)
         }
     }
     closedir(first);
+}
+
+int run_checkout(int commit_id)
+{
+    char cwd[1024];
+    getcwd(cwd,sizeof(cwd));
+    chdir(existance(".nimkat"));
+    char current[4];
+    FILE* eval=fopen("cur_com.txt","r");
+    fgets(current,sizeof(current),eval);
+    fclose(eval);
+    chdir("config");
+    chdir(current);
+    DIR* delete=opendir("com_files");
+    struct dirent* del;
+    while((del=readdir(delete))!=NULL)
+    {
+        if(del->d_type!=DT_DIR)
+        {
+            remove(find_parent(atoi(current),del->d_name,1));
+        }
+    }
+    closedir(delete);
+    char dest_com[4];
+    sprintf(dest_com,"%d",commit_id);
+    chdir("..");
+    chdir(dest_com);
+
+    char change_br[50];
+    FILE* br=fopen("branch.txt","r");
+    fgets(change_br,sizeof(change_br),br);
+    fclose(br);
+
+    DIR* to_copy=opendir("com_files");
+    struct dirent* cpl;
+    while((cpl=readdir(to_copy))!=NULL)
+    {
+        char  command[2000];
+        if(cpl->d_type!=DT_DIR)
+        {
+            sprintf(command,"copy %s\\config\\%s\\com_files\\%s %s",existance(".nimkat"),dest_com,cpl->d_name,find_parent(commit_id,cpl->d_name,1));
+            system(command);
+        }
+    }
+    closedir(to_copy);
+
+    chdir(existance(".nimkat"));
+    FILE* cur=fopen("cur_com.txt","w");
+    fprintf(cur,"%d",commit_id);
+    fclose(cur);
+    FILE* branchbranch=fopen("branch.txt","w");
+    
+    fclose(branchbranch);
+
+    chdir(cwd);
+    
 }
 
 int main(int argc,char* argv[])
@@ -1501,7 +1573,20 @@ else if(strcmp(argv[1],"status")==0)
     char folder_name[50];
     strcpy(folder_name,folfile_name(cwd,0));
     chdir(existance(".nimkat"));
+
+    char current[50];
+    FILE* cur=fopen("cur_com.txt","r");
+    fgets(current,sizeof(current),cur);
+    fclose(cur);
+
     chdir(branch_name);
+    char head[50];
+    FILE* head_com=fopen("head_id.txt","r");
+    fgets(head,sizeof(head),head_com);
+    fclose(head_com);
+
+    if(strcmp(head,current)) {printf("clear,there is nothing to show!");return 0;}
+
     FILE* stat= fopen("status.txt","r");
     char address_checker[1024];
     char mode[4];
@@ -1760,6 +1845,45 @@ else if(strcmp(argv[1],"grep")==0)
        sprintf(command,"%s\\config\\%s\\com_files\\%s",existance(".nimkat"),argv[7],folfile_name(argv[3],0));
        run_grep(command,argv[5],'n');
     }
+}
+
+else if(strcmp(argv[1],"checkout")==0)
+{
+    char cwd[1024];
+    getcwd(cwd,sizeof(cwd));
+    chdir(existance(".nimkat"));
+    if(strcmp(argv[2],"HEAD")==0)
+    {
+        chdir(branch_name);
+        int  h;
+        FILE* head= fopen("head_id.txt","r");
+        fscanf(head,"%d",&h);
+        fclose(head);
+        run_checkout(h);
+    }
+    else if(atoi(argv[2])==0)
+    {
+        chdir(argv[2]);
+        int h;
+        FILE* head=fopen("head_id.txt","r");
+        fscanf(head,"%d",&h);
+        fclose(head);
+        run_checkout(h);
+        chdir("..");
+        FILE* chang_branch=fopen("cur_branch.txt","w");
+        fprintf(chang_branch,"%s",argv[2]);
+        fclose(chang_branch);
+    }
+    else if(atoi(argv[2])!=0)
+    {
+        run_checkout(atoi(argv[2]));
+    }
+    chdir(cwd);
+}
+
+else if(1)
+{
+    printf("%s",find_parent(10,"test.txt",1));
 }
 
 else
