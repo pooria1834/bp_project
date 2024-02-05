@@ -857,18 +857,17 @@ int file_compare(char address1[],int begin1,int end1,char address2[],int begin2,
     FILE* tem2=fopen("temparory2.txt","r");
     char real1[200],real2[200];
     int r1=begin1-1,r2=begin2-1;
-    while(1)
+    while(!feof(tem1))
     {
+        if(feof(tem2)) break;
         fgets(mover1,sizeof(mover1),tem1);
-        if(feof(tem1)) break;
         r1++;
         strcpy(real1,mover1);
         line_debuger(mover1);
         if(strcmp(mover1,"")==0) continue;
-        while(1)
+        while(!feof(tem2))
         {
             fgets(mover2,sizeof(mover2),tem2);
-            if(feof(tem2)) break;
             r2++;
             strcpy(real2,mover2);
             line_debuger(mover2);
@@ -878,9 +877,11 @@ int file_compare(char address1[],int begin1,int end1,char address2[],int begin2,
         {
             printf("-----\n");
             printf("%s-line %d\n",folfile_name(address1,0),r1);
-            printf("%s",real1);
+            if(real1[strlen(real1)-1]=='\n')printf("%s",real1);
+            else printf("%s\n",real1);
             printf("%s-line %d\n",folfile_name(address2,0),r2);
-            printf("%s",real2);
+           if(real2[strlen(real2)-1]=='\n') printf("%s",real2);
+           else printf("%s\n",real2);
             printf("-----\n");
         }
     }
@@ -888,13 +889,13 @@ int file_compare(char address1[],int begin1,int end1,char address2[],int begin2,
     fclose(add2);
     fclose(tem1);
     fclose(tem2);
-    remove("temporary1.txt");
-    remove("temporary2.txt");
+    remove("temparory1.txt");
+    remove("temparory2.txt");
 }
 
 int line_number(char address[])
 {
-  FILE* file=  fopen(address,"r");
+  FILE* file= fopen(address,"r");
     int line_count=0;
     char mover[200];
     while(fgets(mover,sizeof(mover),file)!=NULL) line_count+=1;
@@ -905,7 +906,7 @@ int line_number(char address[])
 char* find_parent(int id_number,char f_n[])
 {
     char a[4];
-    sprintf(a,"%d",id_number);
+    printf("%s",a);
     chdir(existance(".nimkat"));
     chdir("config");chdir(a);
     FILE* stat=fopen("status.txt","r");
@@ -919,6 +920,72 @@ char* find_parent(int id_number,char f_n[])
     }
     fclose(stat);
     return NULL;
+}
+
+int run_grep(char address[],char word[],char mode)
+{
+    FILE* file=fopen(address,"r");
+    if(file==NULL){printf("the file can't be found!");return 0;}
+    char move[200];
+    char temp[200];
+    int line_counter=0;
+    while(!feof(file))
+    {
+        fgets(move,sizeof(move),file);
+        strcpy(temp,move);
+        line_counter++;
+        char* token;
+        token=strtok(temp," \n\0");
+        while(token!=NULL)
+        {
+            if(strcmp(token,word)==0)
+            {
+                if(mode=='n') printf("line%d :%s",line_counter,move);
+                 else {printf("%s",move);};
+                break;
+            }
+            token=strtok(NULL," \n\0");
+        }
+    }
+    fclose(file);
+}
+
+int diff (char id1[],char id2[],short m)
+{
+    chdir(existance(".nimkat"));
+    chdir("config");
+    chdir(id1);
+    DIR* first=opendir("com_files");
+    struct dirent* first_reader;
+    chdir("..");
+    chdir(id2);
+    int flag;
+
+    while((first_reader=readdir(first))!=NULL)
+    {
+        if(first_reader->d_type==DT_DIR) continue;
+        else
+        {
+            flag=0;
+            DIR* second=opendir("com_files");
+            struct dirent* second_reader;
+            while((second_reader=readdir(second))!=NULL)
+            {
+                if(strcmp(first_reader->d_name,second_reader->d_name)==0){flag=1;break;}
+            }
+            closedir(second);
+            if(flag==0) printf("the file %s doesn't exist in commit %s folder\n",first_reader->d_name,id2);
+            else if(m==1)
+            {
+                char add1[1024],add2[1024];
+                printf("the file %s exists in both two commit directories!\n",first_reader->d_name);
+                sprintf(add2,"%s\\config\\%s\\com_files\\%s",existance(".nimkat"),id2,first_reader->d_name);
+                sprintf(add1,"%s\\config\\%s\\com_files\\%s",existance(".nimkat"),id1,first_reader->d_name);
+                file_compare(add1,1,line_number(add1),add2,1,line_number(add2));
+            }    
+        }
+    }
+    closedir(first);
 }
 
 int main(int argc,char* argv[])
@@ -1662,28 +1729,38 @@ else if((strcmp(argv[1],"diff")==0)&&(strcmp(argv[2],"-c")==0))
 {
     char cwd[1024];
     getcwd(cwd,sizeof(cwd));
-    chdir(existance(".nimkat"));
-    chdir("config");
-    chdir(argv[3]);
-    DIR* first=opendir("com_files");
-    struct dirent* first_reader;
-    chdir("..");
-    chdir(argv[4]);
-    DIR* second=opendir("com_files");
-    struct dirent* second_reader;
-    while((first_reader=readdir(first))!=NULL)
-    {
-        if(first_reader->d_type==DT_DIR) continue;
-        else
-        {
-            
-        }
-    }
-
+    diff(argv[3],argv[4],1);
+    diff(argv[4],argv[3],0);
     chdir(cwd);
 }
 
-
+else if(strcmp(argv[1],"grep")==0)
+{
+    if(argc==6)
+    {
+        char final_address[1024];
+        strcpy(final_address,rel_to_abs(argv[3]));
+        run_grep(final_address,argv[5],'o');
+    }
+    else if(argc==7)
+    {
+        char final_address[1024];
+        strcpy(final_address,rel_to_abs(argv[3]));
+        run_grep(final_address,argv[5],'n');
+    }
+    else if(argc==8)
+    {
+       char command[2000];
+       sprintf(command,"%s\\config\\%s\\com_files\\%s",existance(".nimkat"),argv[7],folfile_name(argv[3],0));
+       run_grep(command,argv[5],'o');
+    }
+    else if (argc==9)
+    {
+        char command[2000];
+       sprintf(command,"%s\\config\\%s\\com_files\\%s",existance(".nimkat"),argv[7],folfile_name(argv[3],0));
+       run_grep(command,argv[5],'n');
+    }
+}
 
 else
 {
