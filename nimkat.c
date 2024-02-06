@@ -126,7 +126,7 @@ int  commit_folder_maker(char commit_message[])
    }
    closedir(dirr);
 
-  /* chdir(branch_name);
+   chdir(branch_name);
    char to_be_sd[1000];
    FILE* deleted_exist=fopen("status.txt","r");
    while(1)
@@ -136,7 +136,7 @@ int  commit_folder_maker(char commit_message[])
     if(strcmp(to_be_sd,"sd\n")==0) {flag=1;break;}
    }
    fclose(deleted_exist);
-   chdir(existance(".nimkat"));*/
+   chdir(existance(".nimkat"));
     if(flag==0) {printf("no stage files exist!\n");return 0;}
     if(flag>0)
     {
@@ -222,11 +222,14 @@ int  commit_folder_maker(char commit_message[])
             struct dirent* en;
             while((en=readdir(dor))!=NULL)
             {
-                if((strcmp(en->d_name,".."))&&(strcmp(en->d_name,".")))
+                if(en->d_type!=DT_DIR)
                 {
-                    remove(en->d_name);
+                    char delete_command[100];
+                    sprintf(delete_command,"reset_area\\%s",en->d_name);
+                    remove(delete_command);
                 }
             }
+            closedir(dor);
 
             chdir(branch_name);
             char check[1024];
