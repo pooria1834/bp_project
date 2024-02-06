@@ -194,8 +194,10 @@ int  commit_folder_maker(char commit_message[])
             chdir("../config");
             chdir(head);
             DIR* dir=opendir("com_files");
+            if(dir=NULL) printf("hello");
             struct dirent* ent;
              char command1[2000];
+             
             while((ent=readdir(dir))!=NULL)
             {
                 if((strcmp(ent->d_name,".."))&&(strcmp(ent->d_name,".")))
@@ -205,7 +207,7 @@ int  commit_folder_maker(char commit_message[])
                 }
             }
             closedir(dir);
-
+            
             chdir(existance(".nimkat"));
             DIR* dar=opendir("stage_area");
             struct dirent* enter;
