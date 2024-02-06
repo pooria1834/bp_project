@@ -410,6 +410,19 @@ int run_init(int argc,char* argv[])
      fclose(tagn);
      mkdir(".nimkat\\stage_area");
      mkdir(".nimkat\\reset_area");
+     FILE* hook=fopen(".nimkat\\hooks.txt","w");
+     fprintf(hook,"%s","todo-check\n");
+     fprintf(hook,"%s","eof-blank-space\n");
+     fprintf(hook,"%s","format-check\n");
+     fprintf(hook,"%s","balance-braces\n");
+     fprintf(hook,"%s","indentation-check\n");
+     fprintf(hook,"%s","static-error-check\n");
+     fprintf(hook,"%s","file-size-check\n");
+     fprintf(hook,"%s","character-limit\n");
+     fprintf(hook,"%s","time-limit\n");
+     fclose(hook);
+     FILE* ap_hooks=fopen(".nimkat\\applied_hooks.txt","w");
+     fclose(ap_hooks);
     }
 }
 
@@ -1949,6 +1962,71 @@ else if(strcmp(argv[1],"checkout")==0)
 //     printf("%s",find_parent(10,"test.txt",1));
 // }
 
+else if(strcmp(argv[1],"pre-commit")==0)
+{
+    char cwd[1024];
+    getcwd(cwd,sizeof(cwd));
+    chdir(existance(".nimkat"));
+    if(strcmp(argv[2],"hooks")==0)
+    {
+        char hook_show[500];
+        FILE* hook=fopen("hooks.txt","r");
+        while(1)
+        {   
+            fgets(hook_show,sizeof(hook_show),hook);
+            if(feof(hook)) break;
+            printf("%s",hook_show);
+        }
+        fclose(hook);
+    }
+    else if(strcmp(argv[2],"applied")==0)
+    {
+        char hook_show[500];
+        FILE* hook=fopen("applied_hooks.txt","r");
+        while(1)
+        {   
+            fgets(hook_show,sizeof(hook_show),hook);
+            if(feof(hook)) break;
+            printf("%s",hook_show);
+        }
+        fclose(hook);
+    }
+    else if(strcmp(argv[2],"add")==0)
+    {
+        char finder[100];
+        FILE* hook_finder=fopen("hooks.txt","r");
+        while(1)
+        {
+            fgets(finder,sizeof(finder),hook_finder);
+            finder[strlen(finder)-1]='\0';
+            if(feof(hook_finder)) break;
+            if(strcmp(finder,argv[4])==0) break;
+        }
+        fclose(hook_finder);
+        FILE* new_hook=fopen("applied_hooks.txt","a");
+        fprintf(new_hook,"%s\n",finder);
+        fclose(new_hook);
+    }
+    else if(strcmp(argv[2],"remove")==0)
+    {
+        char not_deleted[100];
+        FILE* hook=fopen("applied_hooks","r");
+        FILE* temp=fopen("temp.txt","w");
+        while(!feof(hook))
+        {
+            fgets(not_deleted,sizeof(not_deleted),hook);
+            if((strcmp(not_deleted,argv[4]))&&(strcmp(not_deleted,""))) fprintf(temp,"%s",not_deleted);
+        }
+        fclose(hook);
+        fclose(temp);
+        char command1[2000];
+        sprintf(command1,"copy %s\\temp.txt %s\\applied_hooks.txt",existance(".nimkat"),existance(".nimkat"));
+        system(command1);
+        remove("temp.txt");
+    }
+    chdir(cwd);
+}
+
 else
 {
     if(existance(".nimkat")==NULL) printf("you have not already initialized!");
@@ -1958,8 +2036,8 @@ else
     while(1)
     {
     fgets(alias_check,500,alias);
-    if(feof(alias)) break;
     alias_check[strlen(alias_check)-1]='\0';
+    if(feof(alias)) break;
     if(strcmp(argv[1],alias_check)==0)
     {
         fgets(real_command,1000,alias);
@@ -1985,7 +2063,7 @@ else
         }
         fclose(help);
         remove("G:\\bp_project\\globals\\temporary.txt");
-        for(int i=0;i<4;i++) printf("%s ",word[i]);
+        //for(int i=0;i<4;i++) printf("%s ",word[i]);
         return main(i,word);
     }
 }
