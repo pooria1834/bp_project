@@ -125,6 +125,18 @@ int  commit_folder_maker(char commit_message[])
     if((strcmp(entry->d_name,".."))&&(strcmp(entry->d_name,"."))) {flag=1;break;}
    }
    closedir(dirr);
+
+  /* chdir(branch_name);
+   char to_be_sd[1000];
+   FILE* deleted_exist=fopen("status.txt","r");
+   while(1)
+   {
+    fgets(to_be_sd,sizeof(to_be_sd),deleted_exist);
+    if(feof(deleted_exist)) break;
+    if(strcmp(to_be_sd,"sd\n")==0) {flag=1;break;}
+   }
+   fclose(deleted_exist);
+   chdir(existance(".nimkat"));*/
     if(flag==0) {printf("no stage files exist!\n");return 0;}
     if(flag>0)
     {
@@ -206,7 +218,7 @@ int  commit_folder_maker(char commit_message[])
                 }
             }
             
-             DIR* dor=opendir("stage_area");
+             DIR* dor=opendir("reset_area");
             struct dirent* en;
             while((en=readdir(dor))!=NULL)
             {
@@ -221,6 +233,7 @@ int  commit_folder_maker(char commit_message[])
             char mtime[100];
             char mode[4];
             char f_name[50];
+            int count=0;
             FILE* change_stat=fopen("status.txt","r");
             while(1)
             {
@@ -235,7 +248,7 @@ int  commit_folder_maker(char commit_message[])
                 {
                     FILE* f=fopen("status.txt","r+");
                     fseek(f,c,SEEK_SET);
-                    if(strcmp(mode,"sd\n")==0) {fprintf(f,"dd\n");chdir("../config");chdir(k);chdir("com_files");remove(f_name);}
+                    if(strcmp(mode,"sd\n")==0) {fprintf(f,"dd\n");count++;chdir("../config");chdir(k);chdir("com_files");remove(f_name);}
                     else fprintf(f,"uu\n");
                     fclose(f);
                 }               
@@ -249,6 +262,19 @@ int  commit_folder_maker(char commit_message[])
             FILE* kar=fopen("head_id.txt","w");
             fprintf(kar,"%d",a);
             fclose(kar);
+            chdir("../config");
+            chdir(k);
+            DIR* commit_count=opendir("com_files");
+            struct dirent* commited_counter;
+            while((commited_counter=readdir(commit_count))!=NULL)
+            {
+                if(commited_counter->d_type!=DT_DIR) count++;
+            }
+            closedir(commit_count);
+            FILE* com_num=fopen("commited_num.txt","w");
+            fprintf(com_num,"%d",count);
+            fclose(com_num);
+            
     }
     }
     chdir(cwd);
@@ -341,6 +367,7 @@ void branch_folder_maker(char br_name[])
     FILE* l_stage=fopen("last_stages.txt","w");
     fclose(l_stage);
     FILE* sf=fopen("head_id.txt","w");
+    fprintf(sf,"%d",0);
     fclose(sf);
     chdir(where);
 }
@@ -1912,10 +1939,10 @@ else if(strcmp(argv[1],"checkout")==0)
     chdir(cwd);
 }
 
-else if(1)
-{
-    printf("%s",find_parent(10,"test.txt",1));
-}
+// else if(1)
+// {
+//     printf("%s",find_parent(10,"test.txt",1));
+// }
 
 else
 {
